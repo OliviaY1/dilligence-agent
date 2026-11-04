@@ -3,9 +3,9 @@ import { readBackendJson } from "@/lib/backend";
 import { Clock, Mic, PhoneOff, Play } from "lucide-react";
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { CallController, type CallState } from "@higgs/call/CallController";
+import { formatDuration } from "@/lib/call-mirror";
 import {
   AvatarView,
-  formatDuration,
   useCallDuration,
   type InterviewSnapshot,
   type SharedCallConfig,

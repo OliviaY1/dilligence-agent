@@ -3,6 +3,7 @@ import express from "express";
 import dotenv from "dotenv";
 import { HttpError, loadLiveKitConfig, startAvatar, stopAvatar } from "./avatar";
 import { registerInterviewRoutes } from "./interviews";
+import { registerProjectRoutes } from "./projects";
 import {
   registerInitialQuestionsRoute,
   registerNextRoundRoute,
@@ -43,6 +44,7 @@ const BOSON_API_KEY = loadApiKey();
 const app = express();
 app.use(express.json({ limit: "2mb" }));
 registerInterviewRoutes(app);
+registerProjectRoutes(app);
 registerValidationRoute(app);
 registerNextRoundRoute(app);
 registerInitialQuestionsRoute(app);
@@ -272,6 +274,9 @@ app.listen(PORT, () => {
   console.log(`Server listening on http://localhost:${PORT}`);
   if (!ANTHROPIC_API_KEY) {
     console.warn("  ⚠ No ANTHROPIC_API_KEY in .env — question writing, live updates and findings will return 500.");
+  }
+  if (!process.env.DATABASE_URL?.trim()) {
+    console.warn("  ⚠ No DATABASE_URL in .env — projects can't be loaded or saved (/api/projects returns 503).");
   }
   if (!BOSON_API_KEY) {
     console.warn(

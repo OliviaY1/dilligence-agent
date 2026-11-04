@@ -1,6 +1,6 @@
 import { NETWORKS } from "./mock-data";
 import { hypothesesFromThesis } from "./mock-service";
-import { validationInputKey } from "./thesis-validation";
+import { validationInputKey } from "./validation-request";
 import type { DiligenceProject, Expert, Interview, PlanExpert } from "./types";
 
 /**

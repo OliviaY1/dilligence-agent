@@ -9,7 +9,7 @@ const navItem =
 
 export function AppShell({ children }: { children: ReactNode }) {
   const params = useParams({ strict: false }) as { projectId?: string };
-  const { projects } = useStore();
+  const { projects, error } = useStore();
   const current = projects.find((p) => p.id === params.projectId);
 
   return (
@@ -56,7 +56,14 @@ export function AppShell({ children }: { children: ReactNode }) {
           </Link>
         </div>
       </aside>
-      <main className="min-w-0 flex-1">{children}</main>
+      <main className="min-w-0 flex-1">
+        {error && (
+          <p role="alert" className="border-b bg-destructive/10 px-6 py-2 text-sm text-destructive">
+            {error}
+          </p>
+        )}
+        {children}
+      </main>
     </div>
   );
 }

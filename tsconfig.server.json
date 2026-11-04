@@ -10,5 +10,13 @@
     "composite": true,
     "types": ["node"]
   },
-  "include": ["server"]
+  "include": [
+    "server",
+    "frontend/src/lib/types.ts",
+    "frontend/src/lib/call-mirror.ts",
+    "frontend/src/lib/mock-service.ts",
+    "frontend/src/lib/mock-data.ts",
+    "frontend/src/lib/demo-project.ts",
+    "frontend/src/lib/validation-request.ts"
+  ]
 }

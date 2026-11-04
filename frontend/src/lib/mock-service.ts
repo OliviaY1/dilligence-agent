@@ -2,7 +2,7 @@
  * Mock service layer. Each function mirrors the shape of a future backend
  * response so it can later be swapped for a real API call.
  */
-import { DENTAL_HYPOTHESES, DENTAL_PLAN_EXPERTS, SAMPLE_COMPANY, seedProjects } from "./mock-data";
+import { seedProjects } from "./mock-data";
 import type {
   DiligenceProject,
   Interview,
@@ -78,9 +78,6 @@ export function thesisPillars(thesis: string): Array<{ label: string; text: stri
   return pillars.length >= 2 ? pillars : [];
 }
 
-// The scripted dental plan is for the Northstar sample only; other dental targets use their own claims.
-const isDental = (p: DiligenceProject) => p.company === SAMPLE_COMPANY;
-
 /** Experts the consultant has chosen for this project: all custom contacts plus selected network experts. */
 export function selectedExperts(p: DiligenceProject) {
   const sel = new Set(p.selectedExpertIds ?? []);
@@ -89,30 +86,6 @@ export function selectedExperts(p: DiligenceProject) {
 
 export function generateMockResearchPlan(input: DiligenceProject): ResearchPlan {
   const project = { ...input, experts: selectedExperts(input) };
-  if (isDental(project)) {
-    const scripted = new Set(DENTAL_PLAN_EXPERTS.map((pe) => pe.expertId));
-    const available = new Set(project.experts.map((e) => e.id));
-    const experts = DENTAL_PLAN_EXPERTS.filter((pe) => available.has(pe.expertId));
-    const extra = project.experts.filter((e) => !scripted.has(e.id));
-    return {
-      hypotheses: DENTAL_HYPOTHESES.map((h) => ({ ...h })),
-      experts: [
-        ...experts.map((pe) => ({ ...pe, questions: pe.questions.map((q) => ({ ...q })) })),
-        ...extra.map((e) => ({
-          expertId: e.id,
-          reason: `${e.title} — selected by the consultant for an additional perspective.`,
-          hypothesisIds: ["h1", "h4"],
-          objectives: "Corroborate evidence on retention and operating efficiency.",
-          questions: [
-            "How would you describe Northstar's reputation among patients and peers?",
-            "What operational factors most affect profitability in multi-site dental groups?",
-            "Where do you see the largest risks for a dental roll-up over the next three years?",
-          ].map((text) => ({ id: uid("q"), text })),
-        })),
-      ],
-      approved: false,
-    };
-  }
   const c = project.company || "the target";
   const fromThesis = hypothesesFromThesis(project.thesis);
   const template: InvestmentHypothesis[] = [
@@ -196,3 +169,5 @@ export function deriveStatus(p: DiligenceProject): ProjectStatus {
   if (p.plan) return "Planning";
   return p.status === "Planning" ? "Planning" : "Draft";
 }
+
+export type Assessment = "Supported" | "Contradicted" | "Mixed Evidence" | "Insufficient Evidence";

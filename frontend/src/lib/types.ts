@@ -10,6 +10,8 @@ export interface Expert {
   phone: string;
   description: string;
   source: ExpertSource;
+  /** Set for contacts imported from a CRM. */
+  crmId?: string;
 }
 
 export interface ExpertNetwork {
@@ -103,7 +105,8 @@ export interface ThesisValidationResult {
     assessment: "Supported" | "Contradicted" | "Mixed Evidence" | "Insufficient Evidence";
     confidence: "high" | "medium" | "low";
     rationale: string;
-    evidence: Array<{ interviewId: string; quote: string; stance: "support" | "contradict" | "neutral" }>;
+    /** turnId: the transcript turn quoted (missing on results saved before it existed). */
+    evidence: Array<{ interviewId: string; turnId?: string; quote: string; stance: "support" | "contradict" | "neutral" }>;
   }>;
   /** What the research has not established yet, with a next step for each. */
   gaps: Array<{
