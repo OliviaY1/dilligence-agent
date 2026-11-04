@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { PGlite } from "@electric-sql/pglite";
 import { beforeEach, describe, expect, it } from "vitest";
 import type { DiligenceProject } from "../frontend/src/lib/types";
-import { fromRows, loadProjects, saveProject, toRows, type Exec, type Transact } from "./projects";
+import { finishInterview, fromRows, loadProjects, saveProject, toRows, type Exec, type Transact } from "./projects";
 
 // A project in round 2: one past interview, one current, a validation with evidence from both.
 const project = (): DiligenceProject => ({
@@ -100,6 +100,42 @@ describe("Supabase schema (Postgres in PGlite)", () => {
     const [loaded] = await loadProjects(exec);
     expect(loaded!.interviews.map((iv) => iv.id)).toEqual(["iv-2"]);
     expect(loaded!.thesisValidation!.hypotheses.find((h) => h.id === "h-r2-1")!.evidence).toEqual([]);
+  });
+
+  it("an ended call saves its transcript, then re-validates, even with no dashboard open", async () => {
+    const p = project();
+    p.interviews.push({ id: "iv-3", expertId: "e-1", status: "Not Started", topic: "", questions: [], transcript: [] });
+    await saveProject(tx, p);
+    const sent: unknown[] = [];
+    await finishInterview(
+      "p-1",
+      "iv-3",
+      {
+        phase: "ended", startedAt: 1000, endedAt: 5000, questions: [],
+        transcript: [{ id: "item-1", speaker: "interviewee", text: "Prices went up twice this year.", at: 2000, interrupted: false }],
+      },
+      { exec, tx },
+      async (body) => {
+        sent.push(body);
+        return {
+          model: "fake", overall: { verdict: "Supported", summary: "" }, gaps: [], droppedQuotes: 0,
+          hypotheses: [{ id: "h-r2-1", assessment: "Mixed Evidence", confidence: "medium", rationale: "r",
+            evidence: [{ interviewId: "iv-3", turnId: "item-1", quote: "Prices went up", stance: "support" }] }],
+        };
+      },
+    );
+    expect(sent).toHaveLength(1);
+    const [saved] = await loadProjects(exec, "p-1");
+    expect(saved!.interviews.find((iv) => iv.id === "iv-3")).toMatchObject({
+      status: "Completed",
+      transcript: [{ id: "item-1", speaker: "expert", text: "Prices went up twice this year.", time: "00:01" }],
+    });
+    expect(await exec("select status from claims where id = $1", ["h-r2-1"])).toEqual([{ status: "Mixed Evidence" }]);
+    expect(await exec("select interview_id, turn_id from evidence")).toEqual([{ interview_id: "iv-3", turn_id: "item-1" }]);
+
+    // A browser tab that has not reloaded saves its older copy: the new validation stays.
+    await saveProject(tx, p);
+    expect((await loadProjects(exec, "p-1"))[0]!.thesisValidation!.model).toBe("fake");
   });
 
   it("deleting a project removes all its rows", async () => {

@@ -172,95 +172,104 @@ export function formatInterviews(ivs: InterviewIn[]): string {
     .join("\n\n");
 }
 
+export interface ValidationBody {
+  company?: string;
+  thesis?: string;
+  hypotheses?: HypothesisIn[];
+  interviews?: InterviewIn[];
+}
+
+/** Claude's validation of a thesis against its interviews; throws on failure. Also run after every call (server/projects.ts). */
+export async function validateThesis(body: ValidationBody) {
+  const hyps = Array.isArray(body.hypotheses) ? body.hypotheses : [];
+  const ivs = Array.isArray(body.interviews) ? body.interviews : [];
+  if (!hyps.length) throw new Error("No hypotheses to validate.");
+  const startedAt = Date.now();
+  const user = buildUserMessage(String(body.company ?? ""), String(body.thesis ?? ""), hyps, ivs);
+  const out = await chatJson(SYSTEM, user);
+  const raw = out.raw;
+  const model = out.model;
+  const parsed = JSON.parse(raw) as {
+    overall?: { verdict?: string; summary?: string };
+    hypotheses?: Array<{
+      id?: string;
+      assessment?: string;
+      confidence?: string;
+      rationale?: string;
+      evidence?: Array<{ interview_id?: string; quote?: string; stance?: string }>;
+    }>;
+    gaps?: Array<{ hypothesis_id?: string | null; gap?: string; next_step?: string; priority?: string }>;
+  };
+
+  // Interviewee turns per interview, for checking quotes and naming the sentence quoted.
+  const spoken = new Map(
+    ivs.map((iv) => [
+      iv.id,
+      (iv.transcript ?? []).filter((t) => t.speaker === "interviewee").map((t) => ({ id: t.id, words: norm(t.text) })),
+    ]),
+  );
+  let droppedQuotes = 0;
+  const byId = new Map((parsed.hypotheses ?? []).map((h) => [String(h.id ?? ""), h]));
+  const hypotheses = hyps.map((h) => {
+    const got = byId.get(h.id);
+    const assessment = ASSESSMENTS.find((a) => a === got?.assessment) ?? "Insufficient Evidence";
+    const evidence = (got?.evidence ?? []).flatMap((e) => {
+      const interviewId = String(e.interview_id ?? "");
+      const quote = String(e.quote ?? "").trim();
+      const words = norm(quote);
+      // A quote must sit inside one interviewee turn; one that spans two is dropped too.
+      const turn = words ? spoken.get(interviewId)?.find((t) => t.words.includes(words)) : undefined;
+      if (!quote || !turn) {
+        droppedQuotes++;
+        return [];
+      }
+      const stance = e.stance === "support" || e.stance === "contradict" ? e.stance : "neutral";
+      return [{ interviewId, turnId: turn.id, quote, stance }];
+    });
+    return {
+      id: h.id,
+      assessment,
+      confidence: got?.confidence === "high" || got?.confidence === "medium" ? got.confidence : "low",
+      rationale: String(got?.rationale ?? "No assessment returned for this hypothesis."),
+      evidence,
+    };
+  });
+  const verdict = VERDICTS.find((v) => v === parsed.overall?.verdict) ?? "Insufficient evidence";
+  const knownIds = new Set(hyps.map((h) => h.id));
+  const gaps = (parsed.gaps ?? [])
+    .filter((g) => typeof g.gap === "string" && g.gap.trim())
+    .slice(0, 6)
+    .map((g) => ({
+      hypothesisId: g.hypothesis_id && knownIds.has(g.hypothesis_id) ? g.hypothesis_id : null,
+      gap: String(g.gap).trim(),
+      nextStep: String(g.next_step ?? "").trim(),
+      priority: g.priority === "high" || g.priority === "medium" ? g.priority : "low",
+    }));
+  return {
+    model,
+    overall: { verdict, summary: String(parsed.overall?.summary ?? "") },
+    hypotheses,
+    gaps,
+    droppedQuotes,
+    ms: Date.now() - startedAt,
+  };
+}
+
 export function registerValidationRoute(app: Express): void {
   app.post("/api/thesis-validation", async (req, res) => {
     if (!process.env.ANTHROPIC_API_KEY?.trim()) return res.status(500).json({ error: "No ANTHROPIC_API_KEY in .env." });
-    const body = (req.body ?? {}) as {
-      company?: string;
-      thesis?: string;
-      hypotheses?: HypothesisIn[];
-      interviews?: InterviewIn[];
-    };
-    const hyps = Array.isArray(body.hypotheses) ? body.hypotheses : [];
-    const ivs = Array.isArray(body.interviews) ? body.interviews : [];
-    if (!hyps.length) return res.status(400).json({ error: "No hypotheses to validate." });
-
+    const body = (req.body ?? {}) as ValidationBody;
+    if (!Array.isArray(body.hypotheses) || !body.hypotheses.length) {
+      return res.status(400).json({ error: "No hypotheses to validate." });
+    }
     const startedAt = Date.now();
-    let model = MODEL;
     try {
-      const user = buildUserMessage(String(body.company ?? ""), String(body.thesis ?? ""), hyps, ivs);
-      const out = await chatJson(SYSTEM, user);
-      const raw = out.raw;
-      model = out.model;
-      const parsed = JSON.parse(raw) as {
-        overall?: { verdict?: string; summary?: string };
-        hypotheses?: Array<{
-          id?: string;
-          assessment?: string;
-          confidence?: string;
-          rationale?: string;
-          evidence?: Array<{ interview_id?: string; quote?: string; stance?: string }>;
-        }>;
-        gaps?: Array<{ hypothesis_id?: string | null; gap?: string; next_step?: string; priority?: string }>;
-      };
-
-      // Interviewee turns per interview, for checking quotes and naming the sentence quoted.
-      const spoken = new Map(
-        ivs.map((iv) => [
-          iv.id,
-          (iv.transcript ?? []).filter((t) => t.speaker === "interviewee").map((t) => ({ id: t.id, words: norm(t.text) })),
-        ]),
-      );
-      let droppedQuotes = 0;
-      const byId = new Map((parsed.hypotheses ?? []).map((h) => [String(h.id ?? ""), h]));
-      const hypotheses = hyps.map((h) => {
-        const got = byId.get(h.id);
-        const assessment = ASSESSMENTS.find((a) => a === got?.assessment) ?? "Insufficient Evidence";
-        const evidence = (got?.evidence ?? []).flatMap((e) => {
-          const interviewId = String(e.interview_id ?? "");
-          const quote = String(e.quote ?? "").trim();
-          const words = norm(quote);
-          // A quote must sit inside one interviewee turn; one that spans two is dropped too.
-          const turn = words ? spoken.get(interviewId)?.find((t) => t.words.includes(words)) : undefined;
-          if (!quote || !turn) {
-            droppedQuotes++;
-            return [];
-          }
-          const stance = e.stance === "support" || e.stance === "contradict" ? e.stance : "neutral";
-          return [{ interviewId, turnId: turn.id, quote, stance }];
-        });
-        return {
-          id: h.id,
-          assessment,
-          confidence: got?.confidence === "high" || got?.confidence === "medium" ? got.confidence : "low",
-          rationale: String(got?.rationale ?? "No assessment returned for this hypothesis."),
-          evidence,
-        };
-      });
-      const verdict = VERDICTS.find((v) => v === parsed.overall?.verdict) ?? "Insufficient evidence";
-      const knownIds = new Set(hyps.map((h) => h.id));
-      const gaps = (parsed.gaps ?? [])
-        .filter((g) => typeof g.gap === "string" && g.gap.trim())
-        .slice(0, 6)
-        .map((g) => ({
-          hypothesisId: g.hypothesis_id && knownIds.has(g.hypothesis_id) ? g.hypothesis_id : null,
-          gap: String(g.gap).trim(),
-          nextStep: String(g.next_step ?? "").trim(),
-          priority: g.priority === "high" || g.priority === "medium" ? g.priority : "low",
-        }));
-      return res.json({
-        model,
-        overall: { verdict, summary: String(parsed.overall?.summary ?? "") },
-        hypotheses,
-        gaps,
-        droppedQuotes,
-        ms: Date.now() - startedAt,
-      });
+      return res.json(await validateThesis(body));
     } catch (err) {
       console.error("thesis validation error:", err);
       return res.status(502).json({
         error: err instanceof Error ? err.message : String(err),
-        model,
+        model: MODEL,
         ms: Date.now() - startedAt,
       });
     }

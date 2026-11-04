@@ -8,11 +8,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import {
-  deriveStatus,
-  missingSamples,
-  withoutProject,
-} from "./mock-service";
+import { deriveStatus, missingSamples, withoutProject } from "./mock-service";
 import { readBackendJson } from "./backend";
 import type { DiligenceProject, Interview } from "./types";
 
@@ -93,9 +89,39 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     })();
   }, []);
 
+  // Back on the tab: take what others, and the backend after each call, saved since.
+  // Projects with local changes not saved yet are kept as they are.
+  // shortcut: refreshes on focus only; use Supabase Realtime if teammates edit the same project at once.
+  useEffect(() => {
+    if (window.location.pathname.startsWith("/interview/")) return;
+    const refresh = () => {
+      if (document.visibilityState !== "visible" || timer.current) return;
+      queue.current = queue.current
+        .then(() => api<{ projects: DiligenceProject[] }>("/api/projects"))
+        .then(({ projects: fresh }) =>
+          setProjects((ps) => {
+            const local = new Map(
+              ps.filter((p) => saved.current.get(p.id) !== p).map((p) => [p.id, p]),
+            );
+            for (const p of fresh) if (!local.has(p.id)) saved.current.set(p.id, p);
+            const ids = new Set(fresh.map((p) => p.id));
+            return [
+              ...fresh.map((p) => local.get(p.id) ?? p),
+              ...[...local.values()].filter((p) => !ids.has(p.id)),
+            ];
+          }),
+        )
+        .catch(() => undefined); // offline for a moment: keep what is on screen
+    };
+    window.addEventListener("focus", refresh);
+    document.addEventListener("visibilitychange", refresh);
+    return () => {
+      window.removeEventListener("focus", refresh);
+      document.removeEventListener("visibilitychange", refresh);
+    };
+  }, []);
+
   // Save changed projects at most once a second: a live call updates its project ~4 times a second.
-  // shortcut: last save wins and other browsers see changes after a reload; add per-row saves
-  // and Supabase Realtime if teammates edit the same project at the same time.
   useEffect(() => {
     if (!hydrated || timer.current) return;
     timer.current = setTimeout(() => {

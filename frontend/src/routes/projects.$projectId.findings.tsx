@@ -13,7 +13,8 @@ import {
 import { useProject } from "@/lib/store";
 import { useRoundView } from "@/lib/round-view";
 import type { DiligenceProject } from "@/lib/types";
-import { completedInterviews, useThesisValidation } from "@/lib/thesis-validation";
+import { useThesisValidation } from "@/lib/thesis-validation";
+import { completedInterviews } from "@/lib/validation-request";
 import { startNextRoundFrom, useNextRound } from "@/lib/next-round";
 import { useSyncSessions } from "@/components/live-call";
 import { cn } from "@/lib/utils";
