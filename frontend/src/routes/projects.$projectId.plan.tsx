@@ -1,10 +1,9 @@
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import {
   ArrowDown,
   ArrowRight,
   ArrowUp,
   ChevronDown,
-  ClipboardList,
   Lock,
   Pencil,
   Plus,
@@ -12,11 +11,11 @@ import {
   X,
 } from "lucide-react";
 import { useState } from "react";
+import { PeoplePicker } from "@/components/people-picker";
 import { expertOf, HypothesisTag } from "@/components/research";
 import { SourceBadge } from "@/components/status";
 import {
   Button,
-  buttonVariants,
   Card,
   ConfirmDialog,
   EmptyState,
@@ -40,30 +39,24 @@ function PlanPage() {
   const { project, update } = useProject(projectId);
   const navigate = useNavigate();
   const { view } = useRoundView();
+  const [picking, setPicking] = useState(false);
   if (!project) return null;
   const rounds = roundsOf(project);
   const viewIdx = view(project);
   const isPast = viewIdx < rounds.length - 1;
   const plan = rounds[viewIdx]?.plan;
-  if (!plan)
-    return (
-      <EmptyState
-        icon={<ClipboardList />}
-        title="No research plan yet"
-        description="Set up expert sources, then generate a plan from the investment thesis."
-        action={
-          <Link
-            to="/projects/$projectId/sources"
-            params={{ projectId }}
-            className={buttonVariants()}
-          >
-            Go to Expert Sources
-          </Link>
-        }
-      />
-    );
+  if (!plan) return <PeoplePicker project={project} update={update} onDone={() => setPicking(false)} />;
 
   const locked = isPast || project.interviews.some((i) => i.status !== "Not Started");
+  if (picking && !locked)
+    return (
+      <div className="space-y-4">
+        <Button variant="ghost" size="sm" onClick={() => setPicking(false)}>
+          Back to the plan
+        </Button>
+        <PeoplePicker project={project} update={update} onDone={() => setPicking(false)} />
+      </div>
+    );
   const roundNo = viewIdx + 1;
   const setPlanExpert = (expertId: string, fn: (pe: PlanExpert) => PlanExpert) =>
     update((p) => ({
@@ -107,8 +100,15 @@ function PlanPage() {
 
       <section>
         <SectionTitle
-          title="Recommended experts"
-          description="Experts selected to validate each hypothesis, with proposed interview guides."
+          title="Interview plan"
+          description="Who to call, which claims they test, and what to ask."
+          action={
+            !locked && (
+              <Button variant="secondary" size="sm" onClick={() => setPicking(true)}>
+                Change people
+              </Button>
+            )
+          }
         />
         <div className="space-y-3">
           {plan.experts.map((pe) => (
@@ -132,8 +132,8 @@ function PlanPage() {
           ))}
           {!plan.experts.length && (
             <EmptyState
-              title="No experts selected"
-              description="Add experts on the Expert Sources tab, then regenerate the plan."
+              title="No one to interview"
+              description="Press Change people to add someone."
             />
           )}
         </div>
@@ -146,8 +146,7 @@ function PlanPage() {
               {plan.approved ? "Plan approved" : "Human approval required"}
             </p>
             <p className="text-sm text-muted-foreground">
-              Approving creates {plan.experts.length} simulated interview sessions. No real calls
-              will be placed.
+              Approving creates one interview for each of the {plan.experts.length} people above.
             </p>
           </div>
           <Button size="lg" disabled={!plan.experts.length} onClick={approve}>

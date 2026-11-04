@@ -1,20 +1,16 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState, type ReactNode } from "react";
 import { AlertTriangle, ArrowRight, Compass, FileText, Loader2, RefreshCw } from "lucide-react";
-import { expertOf } from "@/components/research";
-import { AssessmentBadge } from "@/components/status";
+import { Scorecard } from "@/components/scorecard";
 import { Badge, Button, buttonVariants, Card, EmptyState, SectionTitle } from "@/components/ui-kit";
 import {
   allHypotheses,
-  allInterviews,
   canRecommendNextRound,
-  thesisPillars,
 } from "@/lib/mock-service";
 import { useProject } from "@/lib/store";
 import { useRoundView } from "@/lib/round-view";
 import type { DiligenceProject } from "@/lib/types";
 import { useThesisValidation } from "@/lib/thesis-validation";
-import { completedInterviews } from "@/lib/validation-request";
 import { startNextRoundFrom, useNextRound } from "@/lib/next-round";
 import { useSyncSessions } from "@/components/live-call";
 import { cn } from "@/lib/utils";
@@ -51,17 +47,16 @@ function FindingsPage() {
   if (!project) return null;
   // Opening Findings means the consultant is done; one finished interview is enough.
   const anyDone = project.interviews.some((i) => i.status === "Completed");
-  const roundNo = (project.pastRounds?.length ?? 0) + 1;
 
   if (!anyDone)
     return (
       <EmptyState
         icon={<FileText />}
         title="No findings yet"
-        description="Findings open as soon as one interview has finished. Send an interview from Live Research."
+        description="Findings open as soon as one interview has finished."
         action={
           <Link to="/projects/$projectId/live" params={{ projectId }} className={buttonVariants()}>
-            Open Live Research
+            Go to Live
           </Link>
         }
       />
@@ -69,11 +64,6 @@ function FindingsPage() {
 
   return (
     <div className="space-y-10">
-      <div className="flex items-center gap-2">
-        <Badge tone="primary">Thesis validation and research gaps by Claude from completed interviews</Badge>
-        {roundNo > 1 && <Badge tone="outline">Consolidated across all research rounds</Badge>}
-      </div>
-
       <LlmFindings
         project={project}
         update={update}
@@ -215,13 +205,8 @@ function NextRoundCard({
 }
 
 /**
- * Investment thesis validation, written by Claude from the project's thesis and
- * the transcripts of completed interviews (lib/thesis-validation.ts). Quotes are
- * verbatim from the transcripts; the backend drops any that are not.
- */
-/**
  * Thesis validation and research gaps, both from one Claude call. Nothing
- * pre-generated is shown: while Claude works there is only a loading bar.
+ * pre-generated is shown: gaps and the next round wait for an up-to-date result.
  */
 function LlmFindings({
   project,
@@ -237,122 +222,10 @@ function LlmFindings({
   const working = v.loading || (v.hasEvidence && v.stale && !v.error);
   return (
     <>
-      <ThesisValidationSection project={project} v={v} working={working} />
+      <Scorecard project={project} v={v} />
       {!working && v.result && <ResearchGapsSection project={project} result={v.result} />}
       {!working && v.result && nextRound}
     </>
-  );
-}
-
-function ThesisValidationSection({
-  project,
-  v,
-  working,
-}: {
-  project: DiligenceProject;
-  v: ReturnType<typeof useThesisValidation>;
-  working: boolean;
-}) {
-  const hyps = allHypotheses(project);
-  const ivs = allInterviews(project);
-  const who = (interviewId: string) => {
-    const iv = ivs.find((i) => i.id === interviewId);
-    return iv ? expertOf(project, iv.expertId)?.name ?? "Interviewee" : "Interviewee";
-  };
-  const r = v.result;
-  const done = completedInterviews(project).length;
-
-  return (
-    <section>
-      <SectionTitle
-        title="Investment thesis validation"
-        description={
-          r
-            ? `By ${r.model} from ${r.interviewCount} completed interview${r.interviewCount === 1 ? "" : "s"} · ${new Date(r.at).toLocaleString()}${v.stale ? " · out of date" : ""}`
-            : "Claude tests each hypothesis against the transcripts of completed interviews."
-        }
-        action={
-          <Button variant="secondary" size="sm" disabled={working || !v.hasEvidence} onClick={() => void v.run()}>
-            {v.loading ? <Loader2 className="animate-spin" /> : <RefreshCw />}
-            {v.loading ? "Analysing…" : r ? "Re-run" : "Run"}
-          </Button>
-        }
-      />
-      {project.thesis && <ThesisText thesis={project.thesis} />}
-      {v.error && <p className="mb-3 text-sm text-destructive">Validation failed: {v.error}</p>}
-      {!v.hasEvidence && (
-        <Card className="p-5 text-sm text-muted-foreground">
-          No completed interview with a transcript yet. Finish an interview to validate the thesis.
-        </Card>
-      )}
-      {working && (
-        <ThinkingBar
-          label={`Claude is reading ${done} completed interview${done === 1 ? "" : "s"} against the thesis…`}
-          note="Thesis validation and research gaps appear here when it is done."
-        />
-      )}
-      {r && !working && (
-        <div className="space-y-4">
-          <Card className="overflow-hidden">
-            <table className="w-full text-sm">
-              <thead className="border-b bg-muted/60 text-left text-xs text-muted-foreground">
-                <tr>
-                  <th className="px-5 py-2.5 font-medium">Hypothesis</th>
-                  <th className="px-5 py-2.5 font-medium">Assessment</th>
-                  <th className="px-5 py-2.5 font-medium">Key evidence</th>
-                  <th className="px-5 py-2.5 font-medium">Sources</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y">
-                {r.hypotheses.map((h) => {
-                  const idx = hyps.findIndex((x) => x.id === h.id);
-                  const hyp = hyps[idx];
-                  return (
-                    <tr key={h.id} className="align-top">
-                      <td className="px-5 py-3 font-medium">
-                        <span className="mr-2 font-mono text-xs text-muted-foreground">H{idx + 1}</span>
-                        {hyp?.title ?? h.id}
-                      </td>
-                      <td className="px-5 py-3">
-                        <AssessmentBadge value={h.assessment} />
-                        <p className="mt-1.5 text-xs text-muted-foreground">{h.confidence} confidence</p>
-                      </td>
-                      <td className="px-5 py-3">
-                        <p>{h.rationale}</p>
-                        {h.evidence.map((e, k) => (
-                          <blockquote
-                            key={k}
-                            className={cn(
-                              "mt-2 border-l-2 pl-3 text-muted-foreground",
-                              e.stance === "support"
-                                ? "border-success"
-                                : e.stance === "contradict"
-                                  ? "border-destructive"
-                                  : "border-border",
-                            )}
-                          >
-                            &ldquo;{e.quote}&rdquo; <span className="text-xs">— {who(e.interviewId)}</span>
-                          </blockquote>
-                        ))}
-                      </td>
-                      <td className="px-5 py-3 text-muted-foreground">
-                        {[...new Set(h.evidence.map((e) => who(e.interviewId)))].join(", ") || "—"}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </Card>
-          {r.droppedQuotes > 0 && (
-            <p className="text-xs text-muted-foreground">
-              {r.droppedQuotes} quote{r.droppedQuotes === 1 ? "" : "s"} left out because {r.droppedQuotes === 1 ? "it was" : "they were"} not
-              found word for word in the transcripts.
-            </p>
-          )}
-        </div>
-      )}
-    </section>
   );
 }
 
@@ -433,33 +306,6 @@ function ThinkingBar({ label, note }: { label: string; note?: string }) {
         <div className="animate-indeterminate h-full w-1/3 rounded-full bg-primary" />
       </div>
       {note && <p className="text-xs text-muted-foreground">{note}</p>}
-    </Card>
-  );
-}
-
-/** The thesis as its pillars (label in bold), or as written if it is free text. */
-function ThesisText({ thesis }: { thesis: string }) {
-  const pillars = thesisPillars(thesis);
-  return (
-    <Card className="mb-4 p-5 text-sm">
-      <p className="mb-2 text-xs font-medium uppercase tracking-wider text-muted-foreground">
-        Investment thesis
-      </p>
-      {pillars.length ? (
-        <ul className="space-y-2">
-          {pillars.map((p, i) => (
-            <li key={i} className="flex gap-2">
-              <span className="font-mono text-xs leading-5 text-muted-foreground">H{i + 1}</span>
-              <span>
-                <span className="font-medium">{p.label}:</span>{" "}
-                <span className="text-muted-foreground">{p.text}</span>
-              </span>
-            </li>
-          ))}
-        </ul>
-      ) : (
-        <p className="whitespace-pre-line text-muted-foreground">{thesis}</p>
-      )}
     </Card>
   );
 }

@@ -1,4 +1,3 @@
-import type { Assessment } from "@/lib/mock-service";
 import type { ExpertSource, InterviewStatus, ProjectStatus } from "@/lib/types";
 import { Badge } from "./ui-kit";
 
@@ -27,20 +26,6 @@ export function InterviewStatusBadge({ status }: { status: InterviewStatus }) {
   return (
     <Badge tone={tone[status]} dot={status === "In Progress" ? "pulse" : true}>
       {status}
-    </Badge>
-  );
-}
-
-export function AssessmentBadge({ value }: { value: Assessment }) {
-  const tone = {
-    Supported: "success",
-    Contradicted: "danger",
-    "Mixed Evidence": "warning",
-    "Insufficient Evidence": "outline",
-  } as const;
-  return (
-    <Badge tone={tone[value]} dot>
-      {value}
     </Badge>
   );
 }

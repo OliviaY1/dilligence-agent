@@ -16,6 +16,7 @@
     "frontend/src/lib/call-mirror.ts",
     "frontend/src/lib/mock-service.ts",
     "frontend/src/lib/mock-data.ts",
+    "frontend/src/lib/demo-project.ts",
     "frontend/src/lib/validation-request.ts"
   ]
 }

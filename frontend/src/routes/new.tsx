@@ -44,7 +44,7 @@ function NewDiligence() {
       interviews: [],
       updatedAt: new Date().toISOString(),
     });
-    navigate({ to: "/projects/$projectId/sources", params: { projectId: id } });
+    navigate({ to: "/projects/$projectId", params: { projectId: id } });
   };
 
   return (
@@ -95,13 +95,13 @@ function NewDiligence() {
               className="min-h-80 resize-y"
             />
             <p className="mt-2 flex items-center gap-1.5 text-xs text-muted-foreground">
-              <Info className="size-3.5" /> Diligence Live will identify the key assumptions in this
-              thesis that require validation by experts.
+              <Info className="size-3.5" /> Write each claim on its own line as “Label: We believe …”.
+              Each one is tested in the interviews.
             </p>
           </div>
           <div className="flex justify-end border-t pt-5">
             <Button onClick={create} disabled={!company.trim() || !thesis.trim()}>
-              Continue to Expert Sources <ArrowRight />
+              Continue <ArrowRight />
             </Button>
           </div>
         </Card>

@@ -6,7 +6,7 @@ import { StoreProvider, useStore } from "@/lib/store";
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
-const sample = () => seedProjects()[0]!;
+const sample = () => seedProjects().find((p) => p.id === "oakville")!;
 const json = (body: unknown) => new Response(JSON.stringify(body), { status: 200 });
 
 /** Mount the store; returns the latest store value and the fetch calls made. */

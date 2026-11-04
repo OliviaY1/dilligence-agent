@@ -1,3 +1,4 @@
+import { demoProject } from "./demo-project";
 import type { DiligenceProject, Expert, ExpertNetwork, InvestmentHypothesis } from "./types";
 
 export const NETWORKS: ExpertNetwork[] = [
@@ -103,10 +104,11 @@ export const OAKVILLE_THESIS = [
   ...OAKVILLE_CLAIMS.map((c) => `${c.title}: ${c.description}`),
 ].join("\n\n");
 
-/** The one example project: five claims, one customer and one expert, plan ready to approve. */
+/** The finished demo (Maple Ridge), then the example to run yourself: five claims, plan ready to approve. */
 export function seedProjects(): DiligenceProject[] {
   const q = (id: string, text: string) => ({ id, text });
   return [
+    demoProject(),
     {
       id: "oakville",
       company: OAKVILLE_COMPANY,

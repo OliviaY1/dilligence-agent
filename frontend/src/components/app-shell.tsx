@@ -54,9 +54,6 @@ export function AppShell({ children }: { children: ReactNode }) {
           >
             <Settings className="size-4" /> Settings
           </Link>
-          <p className="mt-4 px-2.5 text-[11px] leading-relaxed text-muted-foreground">
-            Frontend prototype. All experts, calls and findings are simulated.
-          </p>
         </div>
       </aside>
       <main className="min-w-0 flex-1">

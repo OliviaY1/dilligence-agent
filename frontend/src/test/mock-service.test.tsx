@@ -12,7 +12,7 @@ import {
 
 describe("research rounds", () => {
   it("offers the next round once one interview is completed", () => {
-    const seed = seedProjects()[0]!;
+    const seed = seedProjects().find((p) => p.id === "oakville")!;
     const plan = { ...seed.plan!, approved: true };
     const p = { ...seed, plan, interviews: createInterviewsFromPlan(plan) };
     expect(canRecommendNextRound(p)).toBe(false);
@@ -24,13 +24,13 @@ describe("research rounds", () => {
 describe("saved projects", () => {
   it("deleting one project leaves the others untouched", () => {
     const ps = seedProjects();
-    expect(withoutProject(ps, "oakville")).toEqual([]);
+    expect(withoutProject(ps, "oakville").map((p) => p.id)).toEqual(["maple-ridge"]);
     expect(withoutProject(ps, "not-saved")).toHaveLength(ps.length);
   });
 
   it("offers the sample project only when it is not already saved", () => {
     expect(missingSamples(seedProjects())).toHaveLength(0);
-    expect(missingSamples([]).map((p) => p.id)).toEqual(["oakville"]);
+    expect(missingSamples([]).map((p) => p.id)).toEqual(["maple-ridge", "oakville"]);
   });
 });
 
@@ -45,7 +45,7 @@ describe("hypotheses from the thesis", () => {
       "Acquisition Platform",
     ]);
     // The example's claims are exactly what its thesis says.
-    expect(hs.map((h) => h.description)).toEqual(seedProjects()[0]!.plan!.hypotheses.map((h) => h.description));
+    expect(hs.map((h) => h.description)).toEqual(seedProjects().find((p) => p.id === "oakville")!.plan!.hypotheses.map((h) => h.description));
   });
 
   it("falls back to the template for free-text theses", () => {
