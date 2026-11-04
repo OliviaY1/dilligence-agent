@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as NewRouteImport } from './routes/new'
 import { Route as SettingsRouteImport } from './routes/settings'
+import { Route as InterviewSessionIdRouteImport } from './routes/interview.$sessionId'
 import { Route as ProjectsProjectIdRouteImport } from './routes/projects.$projectId'
 import { Route as ProjectsProjectIdIndexRouteImport } from './routes/projects.$projectId.index'
 import { Route as ProjectsProjectIdFindingsRouteImport } from './routes/projects.$projectId.findings'
@@ -33,6 +34,11 @@ const NewRoute = NewRouteImport.update({
 const SettingsRoute = SettingsRouteImport.update({
   id: '/settings',
   path: '/settings',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const InterviewSessionIdRoute = InterviewSessionIdRouteImport.update({
+  id: '/interview/$sessionId',
+  path: '/interview/$sessionId',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ProjectsProjectIdRoute = ProjectsProjectIdRouteImport.update({
@@ -77,6 +83,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/new': typeof NewRoute
   '/settings': typeof SettingsRoute
+  '/interview/$sessionId': typeof InterviewSessionIdRoute
   '/projects/$projectId': typeof ProjectsProjectIdRouteWithChildren
   '/projects/$projectId/findings': typeof ProjectsProjectIdFindingsRoute
   '/projects/$projectId/live': typeof ProjectsProjectIdLiveRoute
@@ -89,6 +96,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/new': typeof NewRoute
   '/settings': typeof SettingsRoute
+  '/interview/$sessionId': typeof InterviewSessionIdRoute
   '/projects/$projectId/findings': typeof ProjectsProjectIdFindingsRoute
   '/projects/$projectId/live': typeof ProjectsProjectIdLiveRoute
   '/projects/$projectId/plan': typeof ProjectsProjectIdPlanRoute
@@ -101,6 +109,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/new': typeof NewRoute
   '/settings': typeof SettingsRoute
+  '/interview/$sessionId': typeof InterviewSessionIdRoute
   '/projects/$projectId': typeof ProjectsProjectIdRouteWithChildren
   '/projects/$projectId/findings': typeof ProjectsProjectIdFindingsRoute
   '/projects/$projectId/live': typeof ProjectsProjectIdLiveRoute
@@ -115,6 +124,7 @@ export interface FileRouteTypes {
     | '/'
     | '/new'
     | '/settings'
+    | '/interview/$sessionId'
     | '/projects/$projectId'
     | '/projects/$projectId/findings'
     | '/projects/$projectId/live'
@@ -127,6 +137,7 @@ export interface FileRouteTypes {
     | '/'
     | '/new'
     | '/settings'
+    | '/interview/$sessionId'
     | '/projects/$projectId/findings'
     | '/projects/$projectId/live'
     | '/projects/$projectId/plan'
@@ -138,6 +149,7 @@ export interface FileRouteTypes {
     | '/'
     | '/new'
     | '/settings'
+    | '/interview/$sessionId'
     | '/projects/$projectId'
     | '/projects/$projectId/findings'
     | '/projects/$projectId/live'
@@ -151,6 +163,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   NewRoute: typeof NewRoute
   SettingsRoute: typeof SettingsRoute
+  InterviewSessionIdRoute: typeof InterviewSessionIdRoute
   ProjectsProjectIdRoute: typeof ProjectsProjectIdRouteWithChildren
   ProjectsProjectIdReportRoute: typeof ProjectsProjectIdReportRoute
 }
@@ -176,6 +189,13 @@ declare module '@tanstack/react-router' {
       path: '/settings'
       fullPath: '/settings'
       preLoaderRoute: typeof SettingsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/interview/$sessionId': {
+      id: '/interview/$sessionId'
+      path: '/interview/$sessionId'
+      fullPath: '/interview/$sessionId'
+      preLoaderRoute: typeof InterviewSessionIdRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/projects/$projectId': {
@@ -253,6 +273,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   NewRoute: NewRoute,
   SettingsRoute: SettingsRoute,
+  InterviewSessionIdRoute: InterviewSessionIdRoute,
   ProjectsProjectIdRoute: ProjectsProjectIdRouteWithChildren,
   ProjectsProjectIdReportRoute: ProjectsProjectIdReportRoute,
 }
@@ -261,11 +282,10 @@ export const routeTree = rootRouteImport
   ._addFileTypes<FileRouteTypes>()
 
 import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
+import type { createStart } from '@tanstack/react-start'
 declare module '@tanstack/react-start' {
   interface Register {
     ssr: true
     router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
   }
 }

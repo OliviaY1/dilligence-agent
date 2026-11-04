@@ -5,5 +5,3 @@ dist/
 *.local
 .DS_Store
 *.tsbuildinfo
-captures/
-higgs-realtime-tutorial-plan.md

@@ -10,16 +10,10 @@ dotenv.config();
 const PORT = Number(process.env.PORT ?? 3000);
 const BOSON_BASE_URL = process.env.BOSON_BASE_URL ?? "https://api.boson.ai";
 
-// How long a minted ephemeral key stays valid. The API accepts 10–7200 seconds
-// and defaults to 600. Short is good: the key is handed to a browser, and a
-// fresh one is minted for every connection anyway.
+// Ephemeral key lifetime (API allows 10–7200 s); one is minted per connection.
 const EPHEMERAL_TTL_SECONDS = 600;
 
-/**
- * The API key comes from BOSON_API_KEY, or from a file whose path is in
- * BOSON_API_KEY_FILE. Reading it from a file keeps the secret out of your shell
- * history and out of .env — useful if you already keep keys somewhere central.
- */
+/** BOSON_API_KEY, or the contents of the file at BOSON_API_KEY_FILE. */
 function loadApiKey(): string | undefined {
   const inline = process.env.BOSON_API_KEY?.trim();
   if (inline) return inline;
@@ -147,19 +141,7 @@ app.post("/api/questions", async (req, res) => {
   }
 });
 
-/**
- * GET /api/token
- *
- * This server exists for exactly one reason: your real API key must never reach
- * the browser. Anything the browser can read, a visitor can read — and a leaked
- * key is billable until you rotate it.
- *
- * So the browser asks *us* for a key, and we ask Boson for a short-lived
- * "ephemeral" one (`bai-eph-…`) using the real key. The browser gets only the
- * ephemeral value, which expires on its own in ten minutes.
- *
- * A fresh key is minted per request. Do not cache them.
- */
+/** GET /api/token: mint a short-lived ephemeral key so the real key never reaches the browser. */
 app.get("/api/token", async (_req, res) => {
   if (!BOSON_API_KEY) {
     return res.status(500).json({
@@ -187,8 +169,6 @@ app.get("/api/token", async (_req, res) => {
         .json({ error: `Upstream ${upstream.status}: ${text || upstream.statusText}` });
     }
 
-    // The upstream response also carries a `session` object. The browser does
-    // not need it, so we do not forward it — return the minimum.
     const data = JSON.parse(text);
     return res.json({ value: data.value, expires_at: data.expires_at });
   } catch (err) {
@@ -371,7 +351,7 @@ app.post("/api/avatar/stop", async (req, res) => {
 app.get("/api/health", (_req, res) => res.json({ ok: true }));
 
 app.listen(PORT, () => {
-  console.log(`Token server listening on http://localhost:${PORT}`);
+  console.log(`Server listening on http://localhost:${PORT}`);
   if (!ANTHROPIC_API_KEY) {
     console.warn("  ⚠ No ANTHROPIC_API_KEY in .env — /api/questions will return 500.");
   }
