@@ -1,5 +1,6 @@
 import { randomBytes } from "node:crypto";
 import type { Express, Response } from "express";
+import { finishInterview } from "./projects";
 
 /**
  * Interview sessions shared between two tabs:
@@ -12,8 +13,9 @@ import type { Express, Response } from "express";
  *               GET  /api/interviews/:id/events   (also) hear the consultant's "end"
  *
  * The call itself (microphone, Higgs Realtime, avatar audio) runs in the
- * interviewee's tab; this only relays. Sessions live in memory, so a server
- * restart forgets them.
+ * interviewee's tab; this relays it, and when the call ends it saves the
+ * transcript and re-runs thesis validation (finishInterview). Sessions live in
+ * memory, so a server restart forgets calls that have not ended yet.
  */
 
 interface Session {
@@ -26,6 +28,10 @@ interface Session {
   state: unknown;
   endRequested: boolean;
   watchers: Set<Response>;
+  /** Where the call is saved when it ends (sent by the consultant's tab). */
+  projectId: string;
+  interviewId: string;
+  saved: boolean;
 }
 
 const sessions = new Map<string, Session>();
@@ -42,7 +48,7 @@ function broadcast(s: Session): void {
 
 export function registerInterviewRoutes(app: Express): void {
   app.post("/api/interviews", (req, res) => {
-    const { config, display } = req.body ?? {};
+    const { config, display, projectId, interviewId } = req.body ?? {};
     if (!config) return res.status(400).json({ error: "config required" });
     if (sessions.size >= MAX_SESSIONS) {
       const oldest = [...sessions.values()].sort((a, b) => a.createdAt - b.createdAt)[0];
@@ -57,6 +63,9 @@ export function registerInterviewRoutes(app: Express): void {
       state: null,
       endRequested: false,
       watchers: new Set(),
+      projectId: String(projectId ?? ""),
+      interviewId: String(interviewId ?? ""),
+      saved: false,
     });
     return res.json({ id });
   });
@@ -72,6 +81,11 @@ export function registerInterviewRoutes(app: Express): void {
     if (!s) return res.status(404).json({ error: "unknown interview" });
     s.state = req.body?.state ?? null;
     broadcast(s);
+    const st = s.state as Parameters<typeof finishInterview>[2] | null;
+    if (st?.phase === "ended" && !s.saved && s.projectId && s.interviewId) {
+      s.saved = true;
+      finishInterview(s.projectId, s.interviewId, st).catch((err) => console.error("after the call: saving or re-validating failed:", err));
+    }
     return res.json({ ok: true, endRequested: s.endRequested });
   });
 

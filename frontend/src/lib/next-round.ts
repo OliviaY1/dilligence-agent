@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { readBackendJson } from "./backend";
 import { allHypotheses, allInterviews, uid } from "./mock-service";
-import { interviewsPayload } from "./thesis-validation";
+import { interviewsPayload } from "./validation-request";
 import type {
   DiligenceProject,
   Expert,

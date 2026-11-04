@@ -8,6 +8,16 @@ import type {
   PlanExpert,
   ThesisValidationResult,
 } from "../frontend/src/lib/types";
+import { mirror, type CallSnapshot } from "../frontend/src/lib/call-mirror";
+import { deriveStatus } from "../frontend/src/lib/mock-service";
+import {
+  completedInterviews,
+  validationInputKey,
+  validationRequest,
+  validationResult,
+  type ValidationReply,
+} from "../frontend/src/lib/validation-request";
+import { validateThesis } from "./validation";
 
 /**
  * Projects in Supabase Postgres (supabase/migrations/*_init.sql).
@@ -201,38 +211,54 @@ const insertAll = (table: string) =>
   `insert into ${table} select * from jsonb_populate_recordset(null::${table}, $1::text::jsonb)`;
 
 export async function saveProject(tx: Transact, p: DiligenceProject): Promise<void> {
-  const r = toRows(p);
-  await tx(async (exec) => {
-    await exec(
-      `insert into projects (id, company, thesis, status, workspace, updated_at)
-       values ($1, $2, $3, $4, $5::text::jsonb, $6::timestamptz)
-       on conflict (id) do update set company = excluded.company, thesis = excluded.thesis,
-         status = excluded.status, workspace = excluded.workspace, updated_at = excluded.updated_at`,
-      [r.project.id, r.project.company, r.project.thesis, r.project.status, JSON.stringify(r.project.workspace), r.project.updated_at],
-    );
-    // Replace the children: the project object is the whole truth for its rows.
-    for (const table of ["evidence", "interviews", "claims", "interviewees"]) {
-      await exec(`delete from ${table} where project_id = $1`, [p.id]);
-    }
-    await exec(insertAll("interviewees"), [JSON.stringify(r.interviewees)]);
-    await exec(insertAll("claims"), [JSON.stringify(r.claims)]);
-    await exec(insertAll("interviews"), [JSON.stringify(r.interviews)]);
-    await exec(
-      `insert into evidence (project_id, claim_id, interview_id, turn_id, quote, stance)
-       select project_id, claim_id, interview_id, turn_id, quote, stance
-       from jsonb_populate_recordset(null::evidence, $1::text::jsonb)`,
-      [JSON.stringify(r.evidence)],
-    );
-  });
+  await tx((exec) => writeProject(exec, p));
 }
 
-export async function loadProjects(exec: Exec): Promise<DiligenceProject[]> {
+/** Save inside an open transaction; locks the project row first (see lockProject). */
+async function writeProject(exec: Exec, incoming: DiligenceProject): Promise<void> {
+  await lockProject(exec, incoming.id);
+  // A browser that has not seen the newest validation (e.g. the one run after a call) must not undo it.
+  const [cur] = await loadProjects(exec, incoming.id);
+  const newer = cur?.thesisValidation;
+  const p = newer && (!incoming.thesisValidation || incoming.thesisValidation.at < newer.at)
+    ? { ...incoming, thesisValidation: newer }
+    : incoming;
+  const r = toRows(p);
+  await exec(
+    `insert into projects (id, company, thesis, status, workspace, updated_at)
+     values ($1, $2, $3, $4, $5::text::jsonb, $6::timestamptz)
+     on conflict (id) do update set company = excluded.company, thesis = excluded.thesis,
+       status = excluded.status, workspace = excluded.workspace, updated_at = excluded.updated_at`,
+    [r.project.id, r.project.company, r.project.thesis, r.project.status, JSON.stringify(r.project.workspace), r.project.updated_at],
+  );
+  // Replace the children: the project object is the whole truth for its rows.
+  for (const table of ["evidence", "interviews", "claims", "interviewees"]) {
+    await exec(`delete from ${table} where project_id = $1`, [p.id]);
+  }
+  await exec(insertAll("interviewees"), [JSON.stringify(r.interviewees)]);
+  await exec(insertAll("claims"), [JSON.stringify(r.claims)]);
+  await exec(insertAll("interviews"), [JSON.stringify(r.interviews)]);
+  await exec(
+    `insert into evidence (project_id, claim_id, interview_id, turn_id, quote, stance)
+     select project_id, claim_id, interview_id, turn_id, quote, stance
+     from jsonb_populate_recordset(null::evidence, $1::text::jsonb)`,
+    [JSON.stringify(r.evidence)],
+  );
+}
+
+/** Writes to one project wait for each other (no-op for a project not saved yet). */
+const lockProject = (exec: Exec, id: string) => exec("select 1 from projects where id = $1 for update", [id]);
+
+/** Every project, or just the one with `id`. */
+export async function loadProjects(exec: Exec, id?: string): Promise<DiligenceProject[]> {
+  const where = id ? " where project_id = $1" : "";
+  const args = id ? [id] : [];
   const [projects, interviewees, claims, interviews, evidence] = await Promise.all([
-    exec("select * from projects order by updated_at desc"),
-    exec("select * from interviewees"),
-    exec("select * from claims"),
-    exec("select * from interviews"),
-    exec("select * from evidence order by id"),
+    exec(`select * from projects${id ? " where id = $1" : ""} order by updated_at desc`, args),
+    exec(`select * from interviewees${where}`, args),
+    exec(`select * from claims${where}`, args),
+    exec(`select * from interviews${where}`, args),
+    exec(`select * from evidence${where} order by id`, args),
   ]);
   const of = <T extends { project_id: string }>(rows: T[], id: string) => rows.filter((x) => x.project_id === id);
   // shortcut: loads every project on each request; filter by user or page it once there are many.
@@ -245,6 +271,40 @@ export async function loadProjects(exec: Exec): Promise<DiligenceProject[]> {
       evidence: of(evidence, project.id),
     }),
   );
+}
+
+/**
+ * A call ended (server/interviews.ts): write it into its interview, then re-run Claude's
+ * thesis validation, so evidence and claim status update after every call, with or
+ * without a dashboard open. `d` and `validate` are parameters for tests.
+ */
+export async function finishInterview(
+  projectId: string,
+  interviewId: string,
+  state: CallSnapshot,
+  d = db(),
+  validate: (body: ReturnType<typeof validationRequest>) => Promise<ValidationReply> = validateThesis as never,
+): Promise<void> {
+  if (!d) return;
+  /** Read, change and save one project in one transaction. */
+  const change = async (fn: (p: DiligenceProject) => DiligenceProject) => {
+    let out: DiligenceProject | undefined;
+    await d.tx(async (exec) => {
+      await lockProject(exec, projectId);
+      const [p] = await loadProjects(exec, projectId);
+      if (p) await writeProject(exec, (out = fn(p)));
+    });
+    return out;
+  };
+  const touched = (p: DiligenceProject) => ({ ...p, status: deriveStatus(p), updatedAt: new Date().toISOString() });
+
+  const p = await change((p) =>
+    touched({ ...p, interviews: p.interviews.map((iv) => (iv.id === interviewId ? mirror(iv, state) : iv)) }),
+  );
+  if (!p || !completedInterviews(p).length || p.thesisValidation?.inputKey === validationInputKey(p)) return;
+  const result = validationResult(p, await validate(validationRequest(p)));
+  // Saved on the latest copy, so edits made while Claude worked are kept.
+  await change((cur) => touched({ ...cur, thesisValidation: result }));
 }
 
 let sql: postgres.Sql | null = null;

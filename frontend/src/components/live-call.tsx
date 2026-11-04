@@ -5,7 +5,8 @@ import type { CallConfig, CallState } from "@higgs/call/CallController";
 import type { Audience } from "@higgs/call/script";
 import { Badge, Button, Select } from "@/components/ui-kit";
 import { fillPlaceholders, interviewerName, useAlexaSettings } from "@/lib/alexa-settings";
-import type { DiligenceProject, Interview, InterviewQuestion, TranscriptTurn } from "@/lib/types";
+import { formatDuration, mirror } from "@/lib/call-mirror";
+import type { DiligenceProject, Interview, InterviewQuestion } from "@/lib/types";
 
 /**
  * The consultant's side of a live interview.
@@ -33,11 +34,6 @@ export interface InterviewSnapshot {
 
 /** The config the interviewee's tab runs (CallController's, without the DOM node). */
 export type SharedCallConfig = Omit<CallConfig, "mediaContainer">;
-
-export const formatDuration = (ms: number) => {
-  const s = Math.max(0, Math.floor(ms / 1000));
-  return `${String(Math.floor(s / 60)).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`;
-};
 
 export const interviewLink = (id: string) =>
   typeof window === "undefined" ? `/interview/${id}` : `${window.location.origin}/interview/${id}`;
@@ -68,43 +64,6 @@ function goalFor(project: DiligenceProject, iv: Interview): string {
   ]
     .filter(Boolean)
     .join("\n");
-}
-
-/** The call's state, written into the interview the dashboard already renders. */
-export function mirror(iv: Interview, st: CallState): Interview {
-  const questions = st.questions.map((q): InterviewQuestion => {
-    const out: InterviewQuestion = {
-      id: q.id,
-      text: q.text,
-      status: q.status === "said" ? "answered" : q.status === "next" ? "current" : "pending",
-    };
-    if (q.added) out.added = true;
-    if (q.status === "removed") out.removed = true;
-    return out;
-  });
-  const t0 = st.startedAt ?? st.transcript[0]?.at ?? Date.now();
-  const transcript = st.transcript.map(
-    (t): TranscriptTurn => ({
-      id: t.id,
-      speaker: t.speaker === "alexa" ? "ai" : "expert",
-      text: t.interrupted ? `${t.text} —` : t.text,
-      time: formatDuration(t.at - t0),
-    }),
-  );
-  const ended = st.phase === "ended";
-  const running = st.phase === "live" || st.phase === "starting";
-  return {
-    ...iv,
-    live: running,
-    status: ended ? "Completed" : running ? "In Progress" : iv.status,
-    topic: ended
-      ? `Interview complete${st.startedAt && st.endedAt ? ` · ${formatDuration(st.endedAt - st.startedAt)}` : ""}`
-      : running
-        ? "Live call"
-        : iv.topic,
-    questions: questions.length ? questions : iv.questions,
-    transcript: st.transcript.length || ended ? transcript : iv.transcript,
-  };
 }
 
 export function useLiveCall(project: DiligenceProject, iv: Interview, setIv: SetIv) {
@@ -174,6 +133,9 @@ export function useLiveCall(project: DiligenceProject, iv: Interview, setIv: Set
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          // So the backend can save the call and re-validate when it ends.
+          projectId: project.id,
+          interviewId: ivId,
           config,
           display: { interviewerName: name, intervieweeName: person?.name ?? "", company: project.company },
         }),
