@@ -13,7 +13,7 @@ import {
 import { useProject } from "@/lib/store";
 import { useRoundView } from "@/lib/round-view";
 import type { DiligenceProject } from "@/lib/types";
-import { useThesisValidation } from "@/lib/thesis-validation";
+import { completedInterviews, useThesisValidation } from "@/lib/thesis-validation";
 import { startNextRoundFrom, useNextRound } from "@/lib/next-round";
 import { useSyncSessions } from "@/components/live-call";
 import { cn } from "@/lib/utils";
@@ -259,7 +259,7 @@ function ThesisValidationSection({
     return iv ? expertOf(project, iv.expertId)?.name ?? "Interviewee" : "Interviewee";
   };
   const r = v.result;
-  const done = ivs.filter((i) => i.status === "Completed" && i.transcript.length > 0).length;
+  const done = completedInterviews(project).length;
 
   return (
     <section>

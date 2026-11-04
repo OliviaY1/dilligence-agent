@@ -10,7 +10,7 @@ import type { Express } from "express";
  *                      transcript: [{ speaker: "interviewer" | "interviewee", text }] }] }
  *   -> { model, overall: { verdict, summary },
  *        hypotheses: [{ id, assessment, confidence, rationale,
- *                       evidence: [{ interviewId, quote, stance }] }],
+ *                       evidence: [{ interviewId, turnId, quote, stance }] }],
  *        gaps: [{ hypothesisId, gap, nextStep, priority }],
  *        droppedQuotes, ms }
  *
@@ -50,6 +50,7 @@ Reply with JSON only, exactly this shape:
 Include every hypothesis id you were given, in the same order.`;
 
 interface Turn {
+  id?: string;
   speaker: "interviewer" | "interviewee";
   text: string;
 }
@@ -203,11 +204,11 @@ export function registerValidationRoute(app: Express): void {
         gaps?: Array<{ hypothesis_id?: string | null; gap?: string; next_step?: string; priority?: string }>;
       };
 
-      // Interviewee words per interview, for checking quotes.
+      // Interviewee turns per interview, for checking quotes and naming the sentence quoted.
       const spoken = new Map(
         ivs.map((iv) => [
           iv.id,
-          norm((iv.transcript ?? []).filter((t) => t.speaker === "interviewee").map((t) => t.text).join(" ")),
+          (iv.transcript ?? []).filter((t) => t.speaker === "interviewee").map((t) => ({ id: t.id, words: norm(t.text) })),
         ]),
       );
       let droppedQuotes = 0;
@@ -219,12 +220,14 @@ export function registerValidationRoute(app: Express): void {
           const interviewId = String(e.interview_id ?? "");
           const quote = String(e.quote ?? "").trim();
           const words = norm(quote);
-          if (!quote || !words || !(spoken.get(interviewId) ?? "").includes(words)) {
+          // A quote must sit inside one interviewee turn; one that spans two is dropped too.
+          const turn = words ? spoken.get(interviewId)?.find((t) => t.words.includes(words)) : undefined;
+          if (!quote || !turn) {
             droppedQuotes++;
             return [];
           }
           const stance = e.stance === "support" || e.stance === "contradict" ? e.stance : "neutral";
-          return [{ interviewId, quote, stance }];
+          return [{ interviewId, turnId: turn.id, quote, stance }];
         });
         return {
           id: h.id,

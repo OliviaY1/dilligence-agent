@@ -109,7 +109,7 @@ export function InterviewCard({
     >
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <p className="font-medium">{expert?.name ?? "Unknown expert"}</p>
+          <p className="font-medium">{expert?.name ?? "Removed contact"}</p>
           <p className="truncate text-xs text-muted-foreground">{expert?.title}</p>
         </div>
         <InterviewStatusBadge status={interview.status} />

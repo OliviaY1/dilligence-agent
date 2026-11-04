@@ -10,5 +10,5 @@
     "composite": true,
     "types": ["node"]
   },
-  "include": ["server"]
+  "include": ["server", "frontend/src/lib/types.ts"]
 }

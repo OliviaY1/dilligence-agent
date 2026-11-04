@@ -35,6 +35,7 @@ Keep both running. The frontend forwards `/api/*` to `localhost:3000`.
 
 | Key | Used for | Needed for UI work? |
 |---|---|---|
+| `DATABASE_URL` | Supabase Postgres: projects, interviews, transcripts, claims, evidence | Yes: projects load from it |
 | `BOSON_API_KEY` | Live voice interviews | Only to test a real call |
 | `ANTHROPIC_API_KEY` | Opening questions, findings, next-round planning, live question updates | Only for real AI output |
 | `LIVEKIT_*` | Optional avatar | No |
@@ -43,8 +44,8 @@ Ask the team for keys. Never commit `.env`.
 
 ## Working on the UI only
 
-You can change most of the UI without any keys:
-- Projects are stored in the browser (localStorage), so no database is needed
+You can change most of the UI with only `DATABASE_URL` set:
+- Projects are stored in Supabase (schema in `supabase/migrations/`). Run the SQL once per Supabase project: paste it into the SQL editor, or `supabase db push`
 - Click **Load sample projects** on the home page (or in Settings) to get demo data
 - Pages live in `frontend/src/routes/`, shared components in `frontend/src/components/`
 

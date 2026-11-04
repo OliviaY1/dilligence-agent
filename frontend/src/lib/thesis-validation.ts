@@ -11,8 +11,14 @@ import type { DiligenceProject, ThesisValidationResult } from "./types";
  * the thesis is edited).
  */
 
-function completedInterviews(p: DiligenceProject) {
-  return allInterviews(p).filter((iv) => iv.status === "Completed" && iv.transcript.length > 0);
+/** Interviews that count as evidence: completed, with a transcript, and the contact not deleted. */
+export function completedInterviews(p: DiligenceProject) {
+  return allInterviews(p).filter(
+    (iv) =>
+      iv.status === "Completed" &&
+      iv.transcript.length > 0 &&
+      p.experts.some((e) => e.id === iv.expertId),
+  );
 }
 
 /** A fingerprint of everything the validation depends on. */
@@ -46,6 +52,7 @@ export function interviewsPayload(p: DiligenceProject) {
         status: q.removed ? "removed" : q.status === "answered" ? "asked" : "not asked",
       })),
       transcript: iv.transcript.map((t) => ({
+        id: t.id,
         speaker: t.speaker === "ai" ? "interviewer" : "interviewee",
         text: t.text,
       })),

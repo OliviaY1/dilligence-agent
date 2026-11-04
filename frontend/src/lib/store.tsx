@@ -4,6 +4,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from "react";
@@ -12,15 +13,33 @@ import {
   missingSamples,
   withoutProject,
 } from "./mock-service";
+import { readBackendJson } from "./backend";
 import type { DiligenceProject, Interview } from "./types";
 
-// v2: projects saved under the earlier key are dropped on purpose, so the demo
-// projects that shipped with the prototype no longer appear in a saved list.
-const KEY = "diligence-live:v2";
+// Projects live in the database behind /api/projects (server/projects.ts).
+// Browsers used to keep them under this key; they are imported once, then removed.
+const OLD_KEY = "diligence-live:v2";
+
+async function api<T>(path: string, init?: RequestInit): Promise<T> {
+  const res = await fetch(path, init);
+  const body = await readBackendJson<T & { error?: string }>(res);
+  if (!res.ok) throw new Error(body.error ?? `HTTP ${res.status}`);
+  return body;
+}
+const put = (p: DiligenceProject) =>
+  api(`/api/projects/${encodeURIComponent(p.id)}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(p),
+  });
+const del = (id: string) => api(`/api/projects/${encodeURIComponent(id)}`, { method: "DELETE" });
+const errText = (e: unknown) => (e instanceof Error ? e.message : String(e));
 
 interface Store {
   projects: DiligenceProject[];
   hydrated: boolean;
+  /** Why loading or saving failed, or "". */
+  error: string;
   updateProject: (id: string, fn: (p: DiligenceProject) => DiligenceProject) => void;
   addProject: (p: DiligenceProject) => void;
   removeProject: (id: string) => void;
@@ -39,47 +58,111 @@ const touch = (p: DiligenceProject): DiligenceProject => ({
 export function StoreProvider({ children }: { children: ReactNode }) {
   const [projects, setProjects] = useState<DiligenceProject[]>([]);
   const [hydrated, setHydrated] = useState(false);
+  const [error, setError] = useState("");
+  /** The version of each project the database has (loaded or saved). */
+  const saved = useRef(new Map<string, DiligenceProject>());
+  const latest = useRef(projects);
+  latest.current = projects;
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  /** Saves run one after another, so an older version never lands after a newer one. */
+  const queue = useRef<Promise<unknown>>(Promise.resolve());
 
   useEffect(() => {
-    try {
-      const raw = localStorage.getItem(KEY);
-      if (raw) setProjects(JSON.parse(raw));
-    } catch {
-      /* ignore corrupt storage */
-    }
-    setHydrated(true);
+    // The interviewee's page (an outside person) must not download the firm's projects.
+    if (window.location.pathname.startsWith("/interview/")) return setHydrated(true);
+    void (async () => {
+      try {
+        let { projects: loaded } = await api<{ projects: DiligenceProject[] }>("/api/projects");
+        if (!loaded.length) {
+          let old: DiligenceProject[] = [];
+          try {
+            old = JSON.parse(localStorage.getItem(OLD_KEY) ?? "[]") as DiligenceProject[];
+          } catch {
+            /* corrupt old storage: nothing to import */
+          }
+          for (const p of old) await put(p);
+          localStorage.removeItem(OLD_KEY);
+          loaded = old;
+        }
+        for (const p of loaded) saved.current.set(p.id, p);
+        setProjects(loaded);
+      } catch (e) {
+        setError(`Could not load projects: ${errText(e)}`);
+      }
+      setHydrated(true);
+    })();
   }, []);
 
+  // Save changed projects at most once a second: a live call updates its project ~4 times a second.
+  // shortcut: last save wins and other browsers see changes after a reload; add per-row saves
+  // and Supabase Realtime if teammates edit the same project at the same time.
   useEffect(() => {
-    if (hydrated) localStorage.setItem(KEY, JSON.stringify(projects));
+    if (!hydrated || timer.current) return;
+    timer.current = setTimeout(() => {
+      timer.current = null;
+      for (const p of latest.current) {
+        if (saved.current.get(p.id) === p) continue;
+        saved.current.set(p.id, p);
+        queue.current = queue.current.then(() =>
+          put(p).then(
+            () => setError(""),
+            (e) => {
+              saved.current.delete(p.id); // retried with the next change
+              setError(`Could not save ${p.company || "a project"}: ${errText(e)}`);
+            },
+          ),
+        );
+      }
+    }, 1000);
   }, [projects, hydrated]);
 
-  // The demo simulation engine (interviews that started themselves and filled in
-  // canned answers) is switched off: interviews now happen only as real live calls
-  // (components/live-call.tsx), started by the consultant.
+  const remove = useCallback((ids: string[]) => {
+    for (const id of ids) {
+      saved.current.delete(id);
+      queue.current = queue.current.then(() =>
+        del(id).catch((e) => setError(`Could not delete a project: ${errText(e)}`)),
+      );
+    }
+  }, []);
 
   const updateProject = useCallback((id: string, fn: (p: DiligenceProject) => DiligenceProject) => {
     setProjects((ps) => ps.map((p) => (p.id === id ? touch(fn(p)) : p)));
   }, []);
   const addProject = useCallback((p: DiligenceProject) => setProjects((ps) => [p, ...ps]), []);
   const removeProject = useCallback(
-    (id: string) => setProjects((ps) => withoutProject(ps, id)),
-    [],
+    (id: string) => {
+      remove([id]);
+      setProjects((ps) => withoutProject(ps, id));
+    },
+    [remove],
   );
-  const removeAllProjects = useCallback(() => setProjects([]), []);
+  const removeAllProjects = useCallback(() => {
+    remove(latest.current.map((p) => p.id));
+    setProjects([]);
+  }, [remove]);
   const loadSamples = useCallback(() => setProjects((ps) => [...missingSamples(ps), ...ps]), []);
 
   const value = useMemo(
     () => ({
       projects,
       hydrated,
+      error,
       updateProject,
       addProject,
       removeProject,
       removeAllProjects,
       loadSamples,
     }),
-    [projects, hydrated, updateProject, addProject, removeProject, removeAllProjects, loadSamples],
+    [
+      projects,
+      hydrated,
+      error,
+      updateProject,
+      addProject,
+      removeProject,
+      removeAllProjects,
+      loadSamples,
+    ],
   );
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }
