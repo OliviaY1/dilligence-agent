@@ -16,21 +16,7 @@ import {
   type Audience,
 } from "./script";
 
-/**
- * One live interview call, with no UI: Higgs Realtime (voice), the optional
- * Higgs Avatar, and Claude keeping the question list up to date.
- *
- * It runs the same flow as the debug page (src/App.tsx):
- *   - the interviewer (`name`) speaks first (the greeting instructions in `instructions`)
- *   - each time she finishes a reply, the first question she has not said yet
- *     goes out in a session.update, ready for her next turn
- *   - a question counts as said once her transcript matches it
- *   - after each transcription of the interviewee, Claude adds/removes questions
- *   - after the last question, the closing; once she has said it, the call ends
- *
- * The dashboard (frontend/) subscribes with `onChange` and renders `CallState`.
- */
-
+/** One live interview call (no UI): Higgs Realtime voice, optional avatar, Claude-updated questions. */
 export interface CallConfig {
   /** The interviewer's name, used in every per-step instruction. */
   name: string;

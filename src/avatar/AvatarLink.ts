@@ -1,23 +1,6 @@
-/**
- * Higgs Avatar, browser side.
- *
- * The browser joins the avatar's LiveKit room as the avatar's publisher
- * ("agent"). It keeps its own Higgs Realtime WebSocket exactly as before; the
- * only change is where Higgs's audio goes: instead of the local speaker, it is
- * streamed to the avatar, which lip-syncs it and publishes video + audio back
- * into the room. We play only those tracks, so there is no duplicate audio.
- *
- * The wire protocol is LiveKit Agents' avatar data-stream protocol, the one
- * Boson's guide uses (DataStreamAudioOutput in livekit-agents):
- *   audio      byte stream, topic "lk.audio_stream", one stream per utterance,
- *              attributes { sample_rate, num_channels }, raw PCM16 bytes
- *   interrupt  RPC "lk.clear_buffer" to the avatar
- *   callbacks  RPCs "lk.playback_started" / "lk.playback_finished" from the
- *              avatar; the latter carries { playback_position, interrupted }
- *
- * livekit-client is loaded from the CDN URL Boson's guide uses, so the app
- * gains no npm dependency.
- */
+// Higgs Avatar, browser side: joins the avatar's LiveKit room and streams Higgs
+// audio to it (LiveKit Agents' avatar data-stream protocol) instead of the local
+// speaker. livekit-client is loaded from a CDN.
 
 const LIVEKIT_CLIENT_URL = "https://unpkg.com/livekit-client@2.15.0/dist/livekit-client.umd.js";
 
@@ -116,7 +99,6 @@ export interface AvatarCallbacks {
   onPlaybackFinished?: (info: { positionMs: number; interrupted: boolean }) => void;
   /** The room or the avatar went away. */
   onEnded?: (reason: string) => void;
-  onLog?: (message: string) => void;
 }
 
 interface StartResponse {
@@ -167,7 +149,6 @@ export class AvatarLink {
     });
     const start = (await res.json()) as StartResponse;
     if (!res.ok) throw new Error(start.error ?? `avatar start HTTP ${res.status}`);
-    cb.onLog?.(`avatar session ${start.sessionId} in room ${start.roomName}`);
 
     let lk: LkModule;
     try {
@@ -247,7 +228,6 @@ export class AvatarLink {
         timer = setTimeout(() => reject(new Error("the avatar's audio track did not arrive within 30 s")), 30_000);
       }),
     ]).finally(() => clearTimeout(timer));
-    this.cb.onLog?.("avatar audio and video are live");
   }
 
   /** One response.output_audio.delta (base64 PCM16, 24 kHz mono) → the avatar. */
@@ -269,7 +249,7 @@ export class AvatarLink {
         if (gen !== this.generation) return;
         await this.writer.write(bytes);
       })
-      .catch((e) => this.cb.onLog?.(`avatar audio write failed: ${errText(e)}`));
+      .catch(() => undefined);
   }
 
   /** End of an utterance: close its byte stream (the protocol's segment end). */
@@ -282,7 +262,7 @@ export class AvatarLink {
         this.writer = null;
         await w.close();
       })
-      .catch((e) => this.cb.onLog?.(`avatar stream close failed: ${errText(e)}`));
+      .catch(() => undefined);
   }
 
   /**
@@ -308,7 +288,7 @@ export class AvatarLink {
     });
     void this.room.localParticipant
       .performRpc({ destinationIdentity: this.avatarIdentity, method: RPC_CLEAR_BUFFER, payload: "" })
-      .catch((e) => this.cb.onLog?.(`avatar clear_buffer failed: ${errText(e)}`));
+      .catch(() => undefined);
     return finished;
   }
 
@@ -326,7 +306,6 @@ export class AvatarLink {
     await this.room.disconnect().catch(() => undefined);
     for (const el of this.elements.splice(0)) el.remove();
     await stopped;
-    this.cb.onLog?.(`avatar session ${this.sessionId} ended`);
   }
 }
 
@@ -338,5 +317,3 @@ async function stopSession(sessionId: string): Promise<void> {
     keepalive: true,
   }).catch(() => undefined);
 }
-
-const errText = (e: unknown) => (e instanceof Error ? e.message : String(e));
