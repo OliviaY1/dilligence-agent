@@ -11,7 +11,8 @@ import {
 
 describe("research rounds", () => {
   it("offers the next round once one interview is completed", () => {
-    const p = seedProjects()[0]!;
+    const seed = seedProjects().find((p) => p.id === "northstar")!;
+    const p = { ...seed, interviews: seed.interviews.map((iv) => ({ ...iv, status: "Not Started" as const })) };
     expect(canRecommendNextRound(p)).toBe(false);
     const oneDone = { ...p, interviews: p.interviews.map((iv, k) => (k === 0 ? completeMockInterview(iv) : iv)) };
     expect(canRecommendNextRound(oneDone)).toBe(true);
@@ -21,15 +22,15 @@ describe("research rounds", () => {
 describe("saved projects", () => {
   it("deleting one project leaves the others untouched", () => {
     const ps = seedProjects();
-    expect(withoutProject(ps, "northstar").map((p) => p.id)).toEqual(["harbor", "summit", "oakville"]);
+    expect(withoutProject(ps, "northstar").map((p) => p.id)).toEqual(["maple-ridge", "harbor", "summit", "oakville"]);
     expect(withoutProject(ps, "not-saved")).toHaveLength(ps.length);
   });
 
   it("offers sample projects only when they are not already saved", () => {
     const ps = seedProjects();
     expect(missingSamples(ps)).toHaveLength(0);
-    expect(missingSamples([]).map((p) => p.id)).toEqual(["northstar", "harbor", "summit", "oakville"]);
-    expect(missingSamples([ps[0]!]).map((p) => p.id)).toEqual(["harbor", "summit", "oakville"]);
+    expect(missingSamples([]).map((p) => p.id)).toEqual(["maple-ridge", "northstar", "harbor", "summit", "oakville"]);
+    expect(missingSamples([ps[0]!]).map((p) => p.id)).toEqual(["northstar", "harbor", "summit", "oakville"]);
   });
 });
 

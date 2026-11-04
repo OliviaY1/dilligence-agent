@@ -24,10 +24,9 @@ export const Route = createFileRoute("/projects/$projectId")({
 });
 
 const tabs = [
-  { to: "/projects/$projectId", label: "Overview", exact: true },
-  { to: "/projects/$projectId/sources", label: "Expert Sources" },
-  { to: "/projects/$projectId/plan", label: "Research Plan" },
-  { to: "/projects/$projectId/live", label: "Live Research" },
+  { to: "/projects/$projectId", label: "Claims", exact: true },
+  { to: "/projects/$projectId/plan", label: "Plan" },
+  { to: "/projects/$projectId/live", label: "Live" },
   { to: "/projects/$projectId/findings", label: "Findings" },
 ] as const;
 

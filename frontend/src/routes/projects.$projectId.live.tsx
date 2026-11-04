@@ -4,11 +4,10 @@ import { useState } from "react";
 import { expertOf, InterviewCard, QuestionStatusList, TranscriptViewer } from "@/components/research";
 import { InterviewStatusBadge } from "@/components/status";
 import { LiveCallBar, useLiveCall, useSyncSessions } from "@/components/live-call";
+import { Scorecard } from "@/components/scorecard";
 import {
-  Badge,
   Button,
   buttonVariants,
-  Card,
   ConfirmDialog,
   EmptyState,
   SectionTitle,
@@ -22,6 +21,7 @@ import {
   roundsOf,
 } from "@/lib/mock-service";
 import { useProject } from "@/lib/store";
+import { useThesisValidation } from "@/lib/thesis-validation";
 import type { DiligenceProject, Interview } from "@/lib/types";
 import { useRoundView } from "@/lib/round-view";
 
@@ -39,7 +39,7 @@ function LivePage() {
   const { projectId } = Route.useParams();
   const search = Route.useSearch();
   const navigate = useNavigate({ from: Route.fullPath });
-  const { project, updateInterview } = useProject(projectId);
+  const { project, update, updateInterview } = useProject(projectId);
   const { picked, select } = useRoundView();
   // Pick up live calls that finished while their sheet was closed.
   useSyncSessions(project, updateInterview);
@@ -57,7 +57,7 @@ function LivePage() {
       <EmptyState
         icon={<Radio />}
         title="No interviews yet"
-        description="Approve a research plan to create simulated interview sessions."
+        description="Approve the plan to create the interviews."
         action={
           <Link to="/projects/$projectId/plan" params={{ projectId }} className={buttonVariants()}>
             Review Research Plan
@@ -74,12 +74,11 @@ function LivePage() {
     navigate({ search: { interview: id, turn }, replace: true });
   };
   const selected = allInterviews(project).find((i) => i.id === search.interview);
-  const active = ivs.filter((i) => i.status === "In Progress").length;
   const completed = ivs.filter((i) => i.status === "Completed").length;
-  const hypCount = new Set(project.plan?.experts.flatMap((e) => e.hypothesisIds)).size;
 
   return (
     <div className="space-y-8">
+      <LiveScorecard project={project} update={update} />
       {!ivs.length && (
         <EmptyState
           icon={<Radio />}
@@ -98,48 +97,19 @@ function LivePage() {
       )}
       {ivs.length > 0 && (
         <>
-          <div className="flex items-center justify-between gap-4">
-            <div className="flex items-center gap-3">
-              <Badge tone={active ? "success" : "neutral"} dot={active ? "pulse" : true}>
-                Live calls
-              </Badge>
-              <p className="text-sm text-muted-foreground">
-                Open an interview and press Send the interview: the interviewee&apos;s page opens in a
-                new tab, and the call starts when they press Start interview.
-              </p>
-            </div>
-            <div className="flex gap-2">
-              {/* Findings open once any interview has finished; the rest can still run. */}
-              {!isPast && completed > 0 && (
-                <Link
-                  to="/projects/$projectId/findings"
-                  params={{ projectId }}
-                  className={buttonVariants()}
-                >
-                  View Findings <ArrowRight />
-                </Link>
-              )}
-            </div>
-          </div>
-
-          <div className="grid grid-cols-4 gap-4">
-            {[
-              ["Total interviews", ivs.length],
-              ["Active", active],
-              ["Completed", completed],
-              ["Hypotheses under investigation", hypCount],
-            ].map(([k, v]) => (
-              <Card key={k} className="px-5 py-4">
-                <p className="text-2xl font-semibold tabular-nums">{v}</p>
-                <p className="text-xs text-muted-foreground">{k}</p>
-              </Card>
-            ))}
-          </div>
-
           <section>
             <SectionTitle
               title="Interviews"
-              description="Select an interview to read the transcript and intervene."
+              description="Open one and press Send the interview. The call starts when the interviewee presses Start."
+              action={
+                // Findings open once any interview has finished; the rest can still run.
+                !isPast &&
+                completed > 0 && (
+                  <Link to="/projects/$projectId/findings" params={{ projectId }} className={buttonVariants()}>
+                    View Findings <ArrowRight />
+                  </Link>
+                )
+              }
             />
             <div className="grid gap-4 lg:grid-cols-3">
               {ivs.map((iv) => (
@@ -170,6 +140,16 @@ function LivePage() {
       </Sheet>
     </div>
   );
+}
+
+function LiveScorecard({
+  project,
+  update,
+}: {
+  project: DiligenceProject;
+  update: (fn: (p: DiligenceProject) => DiligenceProject) => void;
+}) {
+  return <Scorecard project={project} v={useThesisValidation(project, update)} />;
 }
 
 function InterviewDetail({

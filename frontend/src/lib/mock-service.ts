@@ -2,7 +2,7 @@
  * Mock service layer. Each function mirrors the shape of a future backend
  * response so it can later be swapped for a real API call.
  */
-import { DENTAL_HYPOTHESES, DENTAL_PLAN_EXPERTS, seedProjects } from "./mock-data";
+import { DENTAL_HYPOTHESES, DENTAL_PLAN_EXPERTS, SAMPLE_COMPANY, seedProjects } from "./mock-data";
 import type {
   DiligenceProject,
   Interview,
@@ -78,7 +78,8 @@ export function thesisPillars(thesis: string): Array<{ label: string; text: stri
   return pillars.length >= 2 ? pillars : [];
 }
 
-const isDental = (p: DiligenceProject) => /dental|dentist/i.test(p.company + " " + p.thesis);
+// The scripted dental plan is for the Northstar sample only; other dental targets use their own claims.
+const isDental = (p: DiligenceProject) => p.company === SAMPLE_COMPANY;
 
 /** Experts the consultant has chosen for this project: all custom contacts plus selected network experts. */
 export function selectedExperts(p: DiligenceProject) {
@@ -195,5 +196,3 @@ export function deriveStatus(p: DiligenceProject): ProjectStatus {
   if (p.plan) return "Planning";
   return p.status === "Planning" ? "Planning" : "Draft";
 }
-
-export type Assessment = "Supported" | "Contradicted" | "Mixed Evidence" | "Insufficient Evidence";

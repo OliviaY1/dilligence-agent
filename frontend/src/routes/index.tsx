@@ -123,7 +123,7 @@ function Projects() {
             setPending(null);
           }}
           title={`Delete ${pending?.company || "this project"}?`}
-          description="Its expert sources, research plan, interviews and findings are removed from this browser."
+          description="Its claims, plan, interviews and findings are removed from this browser."
           confirmLabel="Delete project"
         />
       </div>

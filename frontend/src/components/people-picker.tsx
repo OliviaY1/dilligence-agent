@@ -1,9 +1,7 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import {
   ArrowRight,
   Check,
   Loader2,
-  Network,
   UserMinus,
   UserPlus,
   Pencil,
@@ -13,10 +11,9 @@ import {
   Users,
 } from "lucide-react";
 import { useState } from "react";
-import { SourceBadge } from "@/components/status";
 import { X } from "lucide-react";
+import { SourceBadge } from "@/components/status";
 import {
-  Badge,
   Button,
   Card,
   ConfirmDialog,
@@ -31,26 +28,26 @@ import {
 import { NETWORK_EXPERTS } from "@/lib/mock-data";
 import { generateMockResearchPlan, selectedExperts, uid } from "@/lib/mock-service";
 import { planWithInitialQuestions } from "@/lib/initial-questions";
-import { useProject } from "@/lib/store";
-import type { Expert } from "@/lib/types";
-
-export const Route = createFileRoute("/projects/$projectId/sources")({
-  component: Sources,
-});
+import type { DiligenceProject, Expert } from "@/lib/types";
 
 type Draft = { id?: string; name: string; phone: string; description: string };
 
-function Sources() {
-  const { projectId } = Route.useParams();
-  const { project, update } = useProject(projectId);
-  const navigate = useNavigate();
+/** Step one of the plan: choose who to interview, then generate their questions. */
+export function PeoplePicker({
+  project,
+  update,
+  onDone,
+}: {
+  project: DiligenceProject;
+  update: (fn: (p: DiligenceProject) => DiligenceProject) => void;
+  onDone: () => void;
+}) {
   const [draft, setDraft] = useState<Draft | null>(null);
   const [toDelete, setToDelete] = useState<Expert | null>(null);
   const [query, setQuery] = useState("");
   const [source, setSource] = useState("All");
   const [generating, setGenerating] = useState(false);
   const [confirmRegen, setConfirmRegen] = useState(false);
-  if (!project) return null;
 
   const toggleNetwork = (id: string) =>
     update((p) => {
@@ -99,7 +96,7 @@ function Sources() {
     const plan = await planWithInitialQuestions(project, generateMockResearchPlan(project));
     update((p) => ({ ...p, plan, interviews: [] }));
     setGenerating(false);
-    navigate({ to: "/projects/$projectId/plan", params: { projectId } });
+    onDone();
   };
 
   const filtered = project.experts.filter(
@@ -122,45 +119,8 @@ function Sources() {
     <div className="space-y-10">
       <section>
         <SectionTitle
-          title="Expert networks"
-          description="Connect networks to add their experts to this project's contact pool."
-          action={<Badge tone="warning">Demo connections</Badge>}
-        />
-        <Card className="divide-y overflow-hidden">
-          {project.networks.map((n) => (
-            <div key={n.id} className="flex items-center gap-4 px-4 py-3.5">
-              <div className="grid size-9 shrink-0 place-items-center rounded-md border bg-muted/50">
-                <Network className="size-4 text-muted-foreground" />
-              </div>
-              <div className="min-w-0 flex-1">
-                <p className="font-medium">{n.name}</p>
-                <p className="truncate text-sm text-muted-foreground">{n.description}</p>
-              </div>
-              {n.connected && (
-                <Badge tone="success" dot>
-                  Connected
-                </Badge>
-              )}
-              <p className="hidden shrink-0 text-xs text-muted-foreground sm:block">
-                {NETWORK_EXPERTS.filter((e) => e.source === n.id).length} experts
-              </p>
-              <Button
-                className="shrink-0"
-                size="sm"
-                variant={n.connected ? "secondary" : "primary"}
-                onClick={() => toggleNetwork(n.id)}
-              >
-                {n.connected ? "Disconnect" : "Connect"}
-              </Button>
-            </div>
-          ))}
-        </Card>
-      </section>
-
-      <section>
-        <SectionTitle
-          title="Selected experts"
-          description={`${chosen.length} experts the AI will consider when building the research plan. Add your own contacts or select experts from the directory below.`}
+          title="Who to interview"
+          description="Add your own contacts, or pick people from the directory below."
           action={
             <Button
               variant="secondary"
@@ -210,8 +170,23 @@ function Sources() {
 
       <section>
         <SectionTitle
-          title="Expert directory"
-          description={`${project.experts.length} experts available to this project.`}
+          title="Directory"
+          description="Connect an expert network to add its experts here."
+          action={
+            <div className="flex flex-wrap gap-1.5">
+              {project.networks.map((n) => (
+                <Button
+                  key={n.id}
+                  size="sm"
+                  variant={n.connected ? "secondary" : "ghost"}
+                  aria-pressed={n.connected}
+                  onClick={() => toggleNetwork(n.id)}
+                >
+                  {n.connected && <Check />} {n.name}
+                </Button>
+              ))}
+            </div>
+          }
         />
         <div className="mb-3 flex gap-2">
           <div className="relative flex-1">
@@ -306,9 +281,9 @@ function Sources() {
 
       <div className="flex items-center justify-between rounded-lg border bg-card p-5">
         <div>
-          <p className="font-medium">Ready to plan the research?</p>
+          <p className="font-medium">Ready?</p>
           <p className="text-sm text-muted-foreground">
-            The AI will extract hypotheses from the thesis and select the most relevant experts.
+            Claude writes opening questions for each person, based on the claims.
           </p>
         </div>
         <Button
@@ -316,7 +291,7 @@ function Sources() {
           disabled={generating || chosen.length === 0}
           onClick={() => (project.plan ? setConfirmRegen(true) : generate())}
         >
-          Generate Research Plan <ArrowRight />
+          {project.plan ? "Regenerate questions" : "Generate questions"} <ArrowRight />
         </Button>
       </div>
 

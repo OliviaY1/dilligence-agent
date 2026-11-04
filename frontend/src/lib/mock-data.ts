@@ -4,7 +4,10 @@ import type {
   ExpertNetwork,
   InvestmentHypothesis,
   PlanExpert,
+  TranscriptTurn,
 } from "./types";
+import { demoProject } from "./demo-project";
+import { validationInputKey } from "./thesis-validation";
 
 export const SAMPLE_COMPANY = "Northstar Dental Group";
 
@@ -220,6 +223,86 @@ export const DENTAL_PLAN_EXPERTS: PlanExpert[] = [
 
 const now = new Date("2026-10-22T15:30:00Z").toISOString();
 
+const SAMPLE_TRANSCRIPTS: Record<string, Array<[TranscriptTurn["speaker"], string]>> = {
+  "e-maria": [
+    ["ai", "How long were you a Northstar patient, and what originally brought you to the clinic?"],
+    ["expert", "About six years. It was close to my office and they took my insurance."],
+    ["ai", "What ultimately led you to switch to a different dental provider?"],
+    ["expert", "Honestly the price. My cleaning went up twice in two years and nobody explained why."],
+    ["ai", "How did Northstar's pricing compare with the alternatives you considered?"],
+    ["expert", "The independent dentist near me was cheaper, and I see the same hygienist every visit there."],
+  ],
+  "e-david": [
+    ["ai", "What was your scope of responsibility at Northstar?"],
+    ["expert", "I ran operations for fourteen clinics in Ohio and Indiana."],
+    ["ai", "How have centralised procurement and back-office functions affected clinic margins?"],
+    ["expert", "Central purchasing cut our supply costs by roughly eight percent within the first year."],
+    ["ai", "How significant are hygienist and assistant staffing shortages across the network?"],
+    ["expert", "It is the biggest problem we had. Some clinics ran two chairs short for months."],
+  ],
+};
+
+const SAMPLE_VALIDATION: Omit<NonNullable<DiligenceProject["thesisValidation"]>, "inputKey"> = {
+  at: "2026-10-22T15:30:00Z",
+  model: "sample data",
+  interviewCount: 2,
+  overall: {
+    verdict: "Partially supported",
+    summary: "Centralisation looks real, but pricing power and staffing are under pressure.",
+  },
+  hypotheses: [
+    {
+      id: "h1",
+      assessment: "Mixed Evidence",
+      confidence: "low",
+      rationale: "One long-tenured patient, who still left over price.",
+      evidence: [
+        { interviewId: "iv-maria", quote: "About six years.", stance: "support" },
+        { interviewId: "iv-maria", quote: "Honestly the price.", stance: "contradict" },
+      ],
+    },
+    {
+      id: "h2",
+      assessment: "Contradicted",
+      confidence: "medium",
+      rationale: "Repeated fee increases drove a patient to a cheaper independent dentist.",
+      evidence: [
+        { interviewId: "iv-maria", quote: "My cleaning went up twice in two years and nobody explained why.", stance: "contradict" },
+        { interviewId: "iv-maria", quote: "The independent dentist near me was cheaper", stance: "contradict" },
+      ],
+    },
+    { id: "h3", assessment: "Insufficient Evidence", confidence: "low", rationale: "Not discussed yet.", evidence: [] },
+    {
+      id: "h4",
+      assessment: "Supported",
+      confidence: "medium",
+      rationale: "A former operator reports clear procurement savings.",
+      evidence: [
+        { interviewId: "iv-david", quote: "Central purchasing cut our supply costs by roughly eight percent within the first year.", stance: "support" },
+      ],
+    },
+    {
+      id: "h5",
+      assessment: "Contradicted",
+      confidence: "medium",
+      rationale: "The former operator calls staffing the biggest problem.",
+      evidence: [
+        { interviewId: "iv-david", quote: "It is the biggest problem we had.", stance: "contradict" },
+        { interviewId: "iv-david", quote: "Some clinics ran two chairs short for months.", stance: "contradict" },
+      ],
+    },
+  ],
+  gaps: [
+    {
+      hypothesisId: "h3",
+      gap: "Nothing yet on how many practices are for sale or at what price.",
+      nextStep: "Ask Priya Raman how acquisition multiples have moved.",
+      priority: "high",
+    },
+  ],
+  droppedQuotes: 0,
+};
+
 function bare(
   id: string,
   company: string,
@@ -247,7 +330,7 @@ export const OAKVILLE_THESIS = "Investment Thesis \u2014 Acquisition of an Oakvi
 export function seedProjects(): DiligenceProject[] {
   const connected = new Set(["GLG", "AlphaSights", "Third Bridge"]);
   const northstar: DiligenceProject = {
-    ...bare("northstar", SAMPLE_COMPANY, SAMPLE_THESIS, "Ready for Interviews", now),
+    ...bare("northstar", SAMPLE_COMPANY, SAMPLE_THESIS, "In Progress", now),
     networks: NETWORKS.map((n) => ({ ...n, connected: connected.has(n.id) })),
     experts: [...CUSTOM_EXPERTS, ...NETWORK_EXPERTS.filter((e) => connected.has(e.source))],
     selectedExpertIds: ["e-david", "e-priya"],
@@ -268,6 +351,17 @@ export function seedProjects(): DiligenceProject[] {
     questions: pe.questions.map((q) => ({ id: q.id, text: q.text, status: "pending" as const })),
     transcript: [],
   }));
+  // Two finished interviews and the scorecard they produce, so the sample works without API keys.
+  for (const iv of northstar.interviews) {
+    const lines = SAMPLE_TRANSCRIPTS[iv.expertId];
+    if (!lines) continue;
+    iv.status = "Completed";
+    iv.topic = "Interview complete";
+    iv.transcript = lines.map(([speaker, text], i) => ({ id: `${iv.id}-t${i}`, speaker, text, time: `00:${String(i * 8).padStart(2, "0")}` }));
+    const asked = new Set(lines.filter(([sp]) => sp === "ai").map(([, t]) => t));
+    iv.questions = iv.questions.map((q) => (asked.has(q.text) ? { ...q, status: "answered" as const } : q));
+  }
+  northstar.thesisValidation = { ...SAMPLE_VALIDATION, inputKey: validationInputKey(northstar) };
 
   const harbor = {
     ...bare(
@@ -299,5 +393,5 @@ export function seedProjects(): DiligenceProject[] {
     "2026-10-24T12:00:00Z",
   );
 
-  return [northstar, harbor, summit, oakville];
+  return [demoProject(), northstar, harbor, summit, oakville];
 }

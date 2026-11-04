@@ -18,7 +18,6 @@ import { Route as ProjectsProjectIdIndexRouteImport } from './routes/projects.$p
 import { Route as ProjectsProjectIdFindingsRouteImport } from './routes/projects.$projectId.findings'
 import { Route as ProjectsProjectIdLiveRouteImport } from './routes/projects.$projectId.live'
 import { Route as ProjectsProjectIdPlanRouteImport } from './routes/projects.$projectId.plan'
-import { Route as ProjectsProjectIdSourcesRouteImport } from './routes/projects.$projectId.sources'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -66,12 +65,6 @@ const ProjectsProjectIdPlanRoute = ProjectsProjectIdPlanRouteImport.update({
   path: '/plan',
   getParentRoute: () => ProjectsProjectIdRoute,
 } as any)
-const ProjectsProjectIdSourcesRoute =
-  ProjectsProjectIdSourcesRouteImport.update({
-    id: '/sources',
-    path: '/sources',
-    getParentRoute: () => ProjectsProjectIdRoute,
-  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -82,7 +75,6 @@ export interface FileRoutesByFullPath {
   '/projects/$projectId/findings': typeof ProjectsProjectIdFindingsRoute
   '/projects/$projectId/live': typeof ProjectsProjectIdLiveRoute
   '/projects/$projectId/plan': typeof ProjectsProjectIdPlanRoute
-  '/projects/$projectId/sources': typeof ProjectsProjectIdSourcesRoute
   '/projects/$projectId/': typeof ProjectsProjectIdIndexRoute
 }
 export interface FileRoutesByTo {
@@ -93,7 +85,6 @@ export interface FileRoutesByTo {
   '/projects/$projectId/findings': typeof ProjectsProjectIdFindingsRoute
   '/projects/$projectId/live': typeof ProjectsProjectIdLiveRoute
   '/projects/$projectId/plan': typeof ProjectsProjectIdPlanRoute
-  '/projects/$projectId/sources': typeof ProjectsProjectIdSourcesRoute
   '/projects/$projectId': typeof ProjectsProjectIdIndexRoute
 }
 export interface FileRoutesById {
@@ -106,7 +97,6 @@ export interface FileRoutesById {
   '/projects/$projectId/findings': typeof ProjectsProjectIdFindingsRoute
   '/projects/$projectId/live': typeof ProjectsProjectIdLiveRoute
   '/projects/$projectId/plan': typeof ProjectsProjectIdPlanRoute
-  '/projects/$projectId/sources': typeof ProjectsProjectIdSourcesRoute
   '/projects/$projectId/': typeof ProjectsProjectIdIndexRoute
 }
 export interface FileRouteTypes {
@@ -120,7 +110,6 @@ export interface FileRouteTypes {
     | '/projects/$projectId/findings'
     | '/projects/$projectId/live'
     | '/projects/$projectId/plan'
-    | '/projects/$projectId/sources'
     | '/projects/$projectId/'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -131,7 +120,6 @@ export interface FileRouteTypes {
     | '/projects/$projectId/findings'
     | '/projects/$projectId/live'
     | '/projects/$projectId/plan'
-    | '/projects/$projectId/sources'
     | '/projects/$projectId'
   id:
     | '__root__'
@@ -143,7 +131,6 @@ export interface FileRouteTypes {
     | '/projects/$projectId/findings'
     | '/projects/$projectId/live'
     | '/projects/$projectId/plan'
-    | '/projects/$projectId/sources'
     | '/projects/$projectId/'
   fileRoutesById: FileRoutesById
 }
@@ -220,13 +207,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ProjectsProjectIdPlanRouteImport
       parentRoute: typeof ProjectsProjectIdRoute
     }
-    '/projects/$projectId/sources': {
-      id: '/projects/$projectId/sources'
-      path: '/sources'
-      fullPath: '/projects/$projectId/sources'
-      preLoaderRoute: typeof ProjectsProjectIdSourcesRouteImport
-      parentRoute: typeof ProjectsProjectIdRoute
-    }
   }
 }
 
@@ -234,7 +214,6 @@ interface ProjectsProjectIdRouteChildren {
   ProjectsProjectIdFindingsRoute: typeof ProjectsProjectIdFindingsRoute
   ProjectsProjectIdLiveRoute: typeof ProjectsProjectIdLiveRoute
   ProjectsProjectIdPlanRoute: typeof ProjectsProjectIdPlanRoute
-  ProjectsProjectIdSourcesRoute: typeof ProjectsProjectIdSourcesRoute
   ProjectsProjectIdIndexRoute: typeof ProjectsProjectIdIndexRoute
 }
 
@@ -242,7 +221,6 @@ const ProjectsProjectIdRouteChildren: ProjectsProjectIdRouteChildren = {
   ProjectsProjectIdFindingsRoute: ProjectsProjectIdFindingsRoute,
   ProjectsProjectIdLiveRoute: ProjectsProjectIdLiveRoute,
   ProjectsProjectIdPlanRoute: ProjectsProjectIdPlanRoute,
-  ProjectsProjectIdSourcesRoute: ProjectsProjectIdSourcesRoute,
   ProjectsProjectIdIndexRoute: ProjectsProjectIdIndexRoute,
 }
 
