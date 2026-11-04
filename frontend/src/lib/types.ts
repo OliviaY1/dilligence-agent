@@ -26,8 +26,6 @@ export interface InvestmentHypothesis {
   evidence: string;
   /** e.g. "New" or "Refined from H3" for hypotheses proposed after a research round. */
   origin?: string;
-  /** Findings that prompted this hypothesis. */
-  basisFindingIds?: string[];
   /** Research round in which the hypothesis was introduced (1 for the original thesis). */
   round?: number;
 }
@@ -77,18 +75,6 @@ export interface TranscriptTurn {
   speaker: "ai" | "expert";
   text: string;
   time: string;
-  questionId?: string;
-}
-
-export interface Finding {
-  id: string;
-  title: string;
-  description: string;
-  hypothesisId: string;
-  interviewId: string;
-  turnId: string;
-  quote: string;
-  sentiment: "support" | "contradict" | "neutral";
 }
 
 export interface Interview {
@@ -98,16 +84,10 @@ export interface Interview {
   topic: string;
   questions: InterviewQuestion[];
   transcript: TranscriptTurn[];
-  findings: Finding[];
   /** A real voice call (Higgs Realtime) is running; the demo simulation leaves it alone. */
   live?: boolean;
   /** The backend interview session the interviewee's link points at. */
   sessionId?: string;
-}
-
-export interface FindingReview {
-  status?: "accepted" | "flagged" | undefined;
-  note?: string | undefined;
 }
 
 /** GPT-6's validation of the investment thesis against completed interviews. */
@@ -158,7 +138,6 @@ export interface DiligenceProject {
   experts: Expert[];
   plan?: ResearchPlan;
   interviews: Interview[];
-  reviews: Record<string, FindingReview>;
   /** Network experts the consultant chose to include; custom experts are always included. */
   selectedExpertIds?: string[];
   /** Completed earlier research rounds; `plan` and `interviews` hold the current round. */

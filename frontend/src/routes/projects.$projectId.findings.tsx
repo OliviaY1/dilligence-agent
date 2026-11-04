@@ -8,12 +8,11 @@ import {
   allHypotheses,
   allInterviews,
   canRecommendNextRound,
-  generateMockFindings,
   thesisPillars,
 } from "@/lib/mock-service";
 import { useProject } from "@/lib/store";
 import { useRoundView } from "@/lib/round-view";
-import type { DiligenceProject, Finding, Interview } from "@/lib/types";
+import type { DiligenceProject, Interview } from "@/lib/types";
 import { useThesisValidation } from "@/lib/thesis-validation";
 import { startNextRoundFrom, useNextRound } from "@/lib/next-round";
 import { useSyncSessions } from "@/components/live-call";
@@ -41,11 +40,6 @@ export const Route = createFileRoute("/projects/$projectId/findings")({
   component: FindingsPage,
 });
 
-export const sourceName = (p: DiligenceProject, f: Finding) => {
-  const iv = allInterviews(p).find((i) => i.id === f.interviewId);
-  return iv ? expertOf(p, iv.expertId) : undefined;
-};
-
 function FindingsPage() {
   const { projectId } = Route.useParams();
   const { project, update } = useProject(projectId);
@@ -59,12 +53,11 @@ function FindingsPage() {
   );
   useSyncSessions(project, syncIv);
   if (!project) return null;
-  const r = generateMockFindings(project);
   // Opening Findings means the consultant is done; one finished interview is enough.
   const anyDone = project.interviews.some((i) => i.status === "Completed");
   const roundNo = (project.pastRounds?.length ?? 0) + 1;
 
-  if (!r.findings.length && !anyDone)
+  if (!anyDone)
     return (
       <EmptyState
         icon={<FileText />}

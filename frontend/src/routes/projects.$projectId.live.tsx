@@ -1,22 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import {
-  ArrowRight,
-  FastForward,
-  MessageSquarePlus,
-  Pause,
-  Play,
-  Radio,
-  Square,
-  X,
-} from "lucide-react";
+import { ArrowRight, MessageSquarePlus, Radio, Square, X } from "lucide-react";
 import { useCallback, useState } from "react";
-import {
-  expertOf,
-  FindingItem,
-  InterviewCard,
-  QuestionStatusList,
-  TranscriptViewer,
-} from "@/components/research";
+import { expertOf, InterviewCard, QuestionStatusList, TranscriptViewer } from "@/components/research";
 import { InterviewStatusBadge } from "@/components/status";
 import { LiveCallBar, useLiveCall, useSyncSessions } from "@/components/live-call";
 import {
@@ -32,12 +17,9 @@ import {
 } from "@/components/ui-kit";
 import {
   addInterviewQuestion,
-  advanceMockInterview,
   completeMockInterview,
   allInterviews,
   roundsOf,
-  pauseMockInterview,
-  startMockInterview,
 } from "@/lib/mock-service";
 import { useProject } from "@/lib/store";
 import type { DiligenceProject, Interview } from "@/lib/types";
@@ -217,11 +199,8 @@ function InterviewDetail({
   const [confirmEnd, setConfirmEnd] = useState(false);
   const call = useLiveCall(project, iv, setIv);
   const done = iv.status === "Completed";
-  // A live call drives this interview; the simulation controls stay out of its way.
+  // A live call drives this interview; the manual controls stay out of its way.
   const simControls = !done && !iv.live && !call.running;
-  // The old demo simulation's Start / Pause / Advance buttons are hidden: a
-  // live call is the only way an interview runs now.
-  const showSimulation = false;
   return (
     <>
       <div className="flex items-start justify-between border-b px-6 py-4">
@@ -238,34 +217,6 @@ function InterviewDetail({
               <Button variant="secondary" size="sm" onClick={() => setShowAdd((s) => !s)}>
                 <MessageSquarePlus /> Add Follow-Up Question
               </Button>
-              {showSimulation && (iv.status === "In Progress" ? (
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  onClick={() => setIv(iv.id, pauseMockInterview)}
-                >
-                  <Pause /> Pause
-                </Button>
-              ) : (
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  onClick={() => setIv(iv.id, startMockInterview)}
-                >
-                  <Play /> {iv.status === "Paused" ? "Resume" : "Start"}
-                </Button>
-              ))}
-              {showSimulation && iv.status === "In Progress" && (
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  title="Advance one turn"
-                  aria-label="Advance one turn"
-                  onClick={() => setIv(iv.id, advanceMockInterview)}
-                >
-                  <FastForward />
-                </Button>
-              )}
               <Button variant="ghost" size="sm" onClick={() => setConfirmEnd(true)}>
                 <Square /> End
               </Button>
@@ -318,20 +269,6 @@ function InterviewDetail({
               Interview questions{call.running ? " · live" : ""}
             </p>
             <QuestionStatusList questions={iv.questions} />
-          </div>
-          <div>
-            <p className="mb-2 text-xs font-medium uppercase tracking-wider text-muted-foreground">
-              Emerging findings
-            </p>
-            {iv.findings.length ? (
-              <div className="space-y-2">
-                {iv.findings.map((f) => (
-                  <FindingItem key={f.id} project={project} finding={f} />
-                ))}
-              </div>
-            ) : (
-              <p className="text-sm text-muted-foreground">None yet.</p>
-            )}
           </div>
         </div>
       </div>

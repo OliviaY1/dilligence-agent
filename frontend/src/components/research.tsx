@@ -1,6 +1,6 @@
-import { CheckCircle2, Circle, CircleDot, Layers, Lightbulb, Plus, Sparkles } from "lucide-react";
+import { CheckCircle2, Circle, CircleDot, Layers, Plus } from "lucide-react";
 import { useEffect, useRef } from "react";
-import type { DiligenceProject, Expert, Finding, Interview, InterviewQuestion } from "@/lib/types";
+import type { DiligenceProject, Expert, Interview, InterviewQuestion } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { allHypotheses, roundsOf } from "@/lib/mock-service";
 import { useRoundView } from "@/lib/round-view";
@@ -98,7 +98,6 @@ export function InterviewCard({
   const expert = expertOf(project, interview.expertId);
   const answered = interview.questions.filter((q) => q.status === "answered").length;
   const current = interview.questions.find((q) => q.status === "current");
-  const latest = interview.findings.at(-1);
   const pct = interview.questions.length ? (answered / interview.questions.length) * 100 : 0;
   return (
     <button
@@ -141,18 +140,6 @@ export function InterviewCard({
           />
         </div>
       </div>
-      {latest && (
-        <div
-          key={latest.id}
-          className="mt-4 flex gap-2 rounded-md bg-highlight/50 p-2.5 text-sm animate-fade-up"
-        >
-          <Lightbulb className="mt-0.5 size-4 shrink-0 text-warning" />
-          <div>
-            <p className="text-xs text-muted-foreground">Latest finding</p>
-            <p className="font-medium leading-snug">{latest.title}</p>
-          </div>
-        </div>
-      )}
     </button>
   );
 }
@@ -184,13 +171,10 @@ export function TranscriptViewer({
       </p>
     );
 
-  const quoteFor = (turnId: string) => interview.findings.find((f) => f.turnId === turnId)?.quote;
   return (
     <div className="space-y-4">
       {interview.transcript.map((t) => {
-        const q = quoteFor(t.id);
         const isHl = t.id === highlightTurnId;
-        const parts = q && t.text.includes(q) ? t.text.split(q) : null;
         return (
           <div
             key={t.id}
@@ -211,17 +195,7 @@ export function TranscriptViewer({
               </span>
               <span className="font-mono text-muted-foreground">{t.time}</span>
             </div>
-            <p className="text-sm leading-relaxed">
-              {parts ? (
-                <>
-                  {parts[0]}
-                  <mark className="rounded-sm bg-highlight px-0.5 text-foreground">{q}</mark>
-                  {parts[1]}
-                </>
-              ) : (
-                t.text
-              )}
-            </p>
+            <p className="text-sm leading-relaxed">{t.text}</p>
           </div>
         );
       })}
@@ -292,20 +266,5 @@ export function QuestionStatusList({ questions }: { questions: InterviewQuestion
         );
       })}
     </ol>
-  );
-}
-
-export function FindingItem({ project, finding }: { project: DiligenceProject; finding: Finding }) {
-  return (
-    <div className="animate-fade-up rounded-md border p-3">
-      <div className="flex items-start gap-2">
-        <Sparkles className="mt-0.5 size-4 shrink-0 text-primary" />
-        <div className="space-y-1.5">
-          <p className="text-sm font-medium leading-snug">{finding.title}</p>
-          <p className="text-sm text-muted-foreground">{finding.description}</p>
-          <HypothesisTag project={project} id={finding.hypothesisId} />
-        </div>
-      </div>
-    </div>
   );
 }

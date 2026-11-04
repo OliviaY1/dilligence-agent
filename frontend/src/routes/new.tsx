@@ -42,7 +42,6 @@ function NewDiligence() {
       networks: NETWORKS.map((n) => ({ ...n })),
       experts: [],
       interviews: [],
-      reviews: {},
       updatedAt: new Date().toISOString(),
     });
     navigate({ to: "/projects/$projectId/sources", params: { projectId: id } });

@@ -1,13 +1,15 @@
 import { describe, expect, it } from "vitest";
 import { seedProjects } from "@/lib/mock-data";
-import { roundsOf, startNextRound } from "@/lib/mock-service";
+import { roundsOf } from "@/lib/mock-service";
+import { startNextRoundFrom } from "@/lib/next-round";
 import { roundIndex } from "@/lib/round-view";
 
 const northstar = () => seedProjects().find((p) => p.id === "northstar")!;
 
 describe("round view state", () => {
   it("follows the current round unless the consultant picks one", () => {
-    const p = startNextRound(northstar());
+    const n = northstar();
+    const p = startNextRoundFrom(n, { at: "", model: "", basedOn: "", plan: n.plan!, newExperts: [], why: {} });
     expect(roundsOf(p).length).toBe(2);
     expect(roundIndex(p, null)).toBe(1);
     expect(roundIndex(p, 0)).toBe(0);
