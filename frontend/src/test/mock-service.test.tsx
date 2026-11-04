@@ -3,6 +3,7 @@ import { OAKVILLE_THESIS, seedProjects } from "@/lib/mock-data";
 import {
   canRecommendNextRound,
   completeMockInterview,
+  createInterviewsFromPlan,
   generateMockResearchPlan,
   hypothesesFromThesis,
   missingSamples,
@@ -11,7 +12,9 @@ import {
 
 describe("research rounds", () => {
   it("offers the next round once one interview is completed", () => {
-    const p = seedProjects()[0]!;
+    const seed = seedProjects()[0]!;
+    const plan = { ...seed.plan!, approved: true };
+    const p = { ...seed, plan, interviews: createInterviewsFromPlan(plan) };
     expect(canRecommendNextRound(p)).toBe(false);
     const oneDone = { ...p, interviews: p.interviews.map((iv, k) => (k === 0 ? completeMockInterview(iv) : iv)) };
     expect(canRecommendNextRound(oneDone)).toBe(true);
@@ -21,15 +24,13 @@ describe("research rounds", () => {
 describe("saved projects", () => {
   it("deleting one project leaves the others untouched", () => {
     const ps = seedProjects();
-    expect(withoutProject(ps, "northstar").map((p) => p.id)).toEqual(["harbor", "summit", "oakville"]);
+    expect(withoutProject(ps, "oakville")).toEqual([]);
     expect(withoutProject(ps, "not-saved")).toHaveLength(ps.length);
   });
 
-  it("offers sample projects only when they are not already saved", () => {
-    const ps = seedProjects();
-    expect(missingSamples(ps)).toHaveLength(0);
-    expect(missingSamples([]).map((p) => p.id)).toEqual(["northstar", "harbor", "summit", "oakville"]);
-    expect(missingSamples([ps[0]!]).map((p) => p.id)).toEqual(["harbor", "summit", "oakville"]);
+  it("offers the sample project only when it is not already saved", () => {
+    expect(missingSamples(seedProjects())).toHaveLength(0);
+    expect(missingSamples([]).map((p) => p.id)).toEqual(["oakville"]);
   });
 });
 
@@ -37,15 +38,14 @@ describe("hypotheses from the thesis", () => {
   it("turns each 'Label: We believe …' pillar of the Oakville thesis into a hypothesis", () => {
     const hs = hypothesesFromThesis(OAKVILLE_THESIS);
     expect(hs.map((h) => h.title)).toEqual([
-      "Market Attractiveness",
-      "Competitive Positioning",
-      "Organic Revenue Growth",
-      "Operational Efficiency",
+      "Customer Demand",
+      "Customer Loyalty",
+      "Pricing Power",
       "Talent Retention",
-      "Acquisition-Led Expansion",
-      "Financial Returns",
+      "Acquisition Platform",
     ]);
-    expect(hs[0]!.description.startsWith("We believe Oakville's")).toBe(true);
+    // The example's claims are exactly what its thesis says.
+    expect(hs.map((h) => h.description)).toEqual(seedProjects()[0]!.plan!.hypotheses.map((h) => h.description));
   });
 
   it("falls back to the template for free-text theses", () => {
@@ -60,7 +60,7 @@ describe("hypotheses from the thesis", () => {
         { id: "c1", name: "Olivia", title: "Custom contact", phone: "", description: "Dog owner", source: "Custom" },
       ],
     });
-    expect(plan.hypotheses).toHaveLength(7);
-    expect(plan.experts[0]!.hypothesisIds).toHaveLength(7);
+    expect(plan.hypotheses).toHaveLength(5);
+    expect(plan.experts[0]!.hypothesisIds).toHaveLength(5);
   });
 });

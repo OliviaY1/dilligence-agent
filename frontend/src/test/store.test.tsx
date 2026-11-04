@@ -50,25 +50,25 @@ describe("project store (database through /api/projects)", () => {
       "diligence-live:v2": JSON.stringify([sample()]),
     });
     expect(calls.filter((c) => c.method === "PUT").map((c) => c.url)).toEqual([
-      "/api/projects/northstar",
+      "/api/projects/oakville",
     ]);
-    expect(store().projects.map((p) => p.id)).toEqual(["northstar"]);
+    expect(store().projects.map((p) => p.id)).toEqual(["oakville"]);
     expect(mem.has("diligence-live:v2")).toBe(false);
   });
 
   it("saves a changed project once, not on every change, and deletes on remove", async () => {
     const { store, calls } = await mount([sample()]);
     await act(async () => {
-      store().updateProject("northstar", (p) => ({ ...p, thesis: "one" }));
-      store().updateProject("northstar", (p) => ({ ...p, thesis: "two" }));
+      store().updateProject("oakville", (p) => ({ ...p, thesis: "one" }));
+      store().updateProject("oakville", (p) => ({ ...p, thesis: "two" }));
     });
     await act(() => new Promise((r) => setTimeout(r, 1100)));
     const puts = calls.filter((c) => c.method === "PUT");
     expect(puts).toHaveLength(1);
     expect((puts[0]!.body as { thesis: string }).thesis).toBe("two");
 
-    await act(async () => store().removeProject("northstar"));
+    await act(async () => store().removeProject("oakville"));
     await act(() => new Promise((r) => setTimeout(r, 0)));
-    expect(calls.at(-1)).toMatchObject({ method: "DELETE", url: "/api/projects/northstar" });
+    expect(calls.at(-1)).toMatchObject({ method: "DELETE", url: "/api/projects/oakville" });
   });
 });
