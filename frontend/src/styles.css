@@ -92,7 +92,7 @@
   }
 }
 
-/* Findings: indeterminate loading bar while GPT-6 works. */
+/* Findings: indeterminate loading bar while Claude works. */
 @keyframes indeterminate {
   0% {
     transform: translateX(-100%);

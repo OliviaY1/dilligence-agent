@@ -3,7 +3,7 @@
 AI platform that tests investment thesis claims through AI-run voice interviews.
 
 The repo has two parts:
-- **Backend** (repo root): Express server on port 3000. Holds all API keys and talks to Boson AI, OpenAI and Anthropic.
+- **Backend** (repo root): Express server on port 3000. Holds all API keys and talks to Boson AI and Anthropic.
 - **Frontend** (`frontend/`): React app (Vite + TanStack). Sends `/api/*` requests to the backend through the Vite proxy.
 
 ## Requirements
@@ -36,8 +36,7 @@ Keep both running. The frontend forwards `/api/*` to `localhost:3000`.
 | Key | Used for | Needed for UI work? |
 |---|---|---|
 | `BOSON_API_KEY` | Live voice interviews | Only to test a real call |
-| `OPENAI_API_KEY` | Opening questions, findings, next-round planning | Only for real AI output |
-| `ANTHROPIC_API_KEY` | Live question updates during a call | Only to test a real call |
+| `ANTHROPIC_API_KEY` | Opening questions, findings, next-round planning, live question updates | Only for real AI output |
 | `LIVEKIT_*` | Optional avatar | No |
 
 Ask the team for keys. Never commit `.env`.

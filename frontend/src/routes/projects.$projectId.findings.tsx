@@ -69,7 +69,7 @@ function FindingsPage() {
   return (
     <div className="space-y-10">
       <div className="flex items-center gap-2">
-        <Badge tone="primary">Thesis validation and research gaps by GPT-6 from completed interviews</Badge>
+        <Badge tone="primary">Thesis validation and research gaps by Claude from completed interviews</Badge>
         {roundNo > 1 && <Badge tone="outline">Consolidated across all research rounds</Badge>}
       </div>
 
@@ -95,7 +95,7 @@ function FindingsPage() {
 }
 
 /**
- * "Recommended next round", written by GPT-6 from all the context so far
+ * "Recommended next round", written by Claude from all the context so far
  * (lib/next-round.ts): sharper hypotheses, who to interview (existing contacts
  * or new profiles to recruit) and their questions.
  */
@@ -123,7 +123,7 @@ function NextRoundCard({
         description={
           proposal
             ? `By ${proposal.model} from the thesis, the findings, the research gaps and every transcript so far.`
-            : `GPT-6 proposes Round ${roundNo}: what to test next, who to interview, and what to ask.`
+            : `Claude proposes Round ${roundNo}: what to test next, who to interview, and what to ask.`
         }
         action={
           <Button variant="secondary" size="sm" disabled={n.loading} onClick={() => void n.run()}>
@@ -133,7 +133,7 @@ function NextRoundCard({
         }
       />
       {n.error && !n.loading && <p className="mb-3 text-sm text-destructive">Proposal failed: {n.error}</p>}
-      {n.loading && <ThinkingBar label={`GPT-6 is planning Round ${roundNo} from everything so far…`} />}
+      {n.loading && <ThinkingBar label={`Claude is planning Round ${roundNo} from everything so far…`} />}
       {proposal && !n.loading && (
         <Card className="border-primary/30">
           <div className="space-y-5 p-5">
@@ -214,13 +214,13 @@ function NextRoundCard({
 }
 
 /**
- * Investment thesis validation, written by GPT-6 from the project's thesis and
+ * Investment thesis validation, written by Claude from the project's thesis and
  * the transcripts of completed interviews (lib/thesis-validation.ts). Quotes are
  * verbatim from the transcripts; the backend drops any that are not.
  */
 /**
- * Thesis validation and research gaps, both from one GPT-6 call. Nothing
- * pre-generated is shown: while GPT-6 works there is only a loading bar.
+ * Thesis validation and research gaps, both from one Claude call. Nothing
+ * pre-generated is shown: while Claude works there is only a loading bar.
  */
 function LlmFindings({
   project,
@@ -229,7 +229,7 @@ function LlmFindings({
 }: {
   project: DiligenceProject;
   update: (fn: (p: DiligenceProject) => DiligenceProject) => void;
-  /** The "Recommended next round" card; shown only with a finished GPT-6 result. */
+  /** The "Recommended next round" card; shown only with a finished Claude result. */
   nextRound: ReactNode;
 }) {
   const v = useThesisValidation(project, update);
@@ -268,7 +268,7 @@ function ThesisValidationSection({
         description={
           r
             ? `By ${r.model} from ${r.interviewCount} completed interview${r.interviewCount === 1 ? "" : "s"} · ${new Date(r.at).toLocaleString()}${v.stale ? " · out of date" : ""}`
-            : "GPT-6 tests each hypothesis against the transcripts of completed interviews."
+            : "Claude tests each hypothesis against the transcripts of completed interviews."
         }
         action={
           <Button variant="secondary" size="sm" disabled={working || !v.hasEvidence} onClick={() => void v.run()}>
@@ -286,7 +286,7 @@ function ThesisValidationSection({
       )}
       {working && (
         <ThinkingBar
-          label={`GPT-6 is reading ${done} completed interview${done === 1 ? "" : "s"} against the thesis…`}
+          label={`Claude is reading ${done} completed interview${done === 1 ? "" : "s"} against the thesis…`}
           note="Thesis validation and research gaps appear here when it is done."
         />
       )}
@@ -355,7 +355,7 @@ function ThesisValidationSection({
   );
 }
 
-/** Research gaps from the same GPT-6 call as the validation (so the two never disagree). */
+/** Research gaps from the same Claude call as the validation (so the two never disagree). */
 function ResearchGapsSection({
   project,
   result,
@@ -411,7 +411,7 @@ function ResearchGapsSection({
   );
 }
 
-/** An indeterminate progress bar with the elapsed time, while GPT-6 works. */
+/** An indeterminate progress bar with the elapsed time, while Claude works. */
 function ThinkingBar({ label, note }: { label: string; note?: string }) {
   const [t0] = useState(Date.now());
   const [now, setNow] = useState(Date.now());

@@ -1,7 +1,8 @@
+import Anthropic from "@anthropic-ai/sdk";
 import type { Express } from "express";
 
 /**
- * Investment thesis validation with OpenAI (GPT-6).
+ * Investment thesis validation with Claude (MODEL below).
  *
  *   POST /api/thesis-validation
  *     { company, thesis, hypotheses: [{ id, title, description, evidence }],
@@ -13,17 +14,13 @@ import type { Express } from "express";
  *        gaps: [{ hypothesisId, gap, nextStep, priority }],
  *        droppedQuotes, ms }
  *
- * The key comes from OPENAI_API_KEY in .env (never sent to the browser).
- * The model is OPENAI_MODEL, or else the first GPT-6 model this key can use
- * (GET /v1/models), in PREFERRED order.
+ * The key comes from ANTHROPIC_API_KEY in .env (never sent to the browser).
  *
  * Quotes are checked: any quote that does not appear in that interview's own
  * interviewee turns is dropped and counted in `droppedQuotes`, so the page
  * never shows invented evidence.
  */
 
-const OPENAI_BASE_URL = process.env.OPENAI_BASE_URL ?? "https://api.openai.com/v1";
-const PREFERRED = ["gpt-6", "gpt-6-astra", "gpt-6-sol", "gpt-6-luna"];
 
 const SYSTEM = `You are a senior private equity diligence analyst. You test an investment thesis against primary research: short phone interviews (about one minute each) with customers and industry experts.
 
@@ -77,66 +74,35 @@ interface HypothesisIn {
 const ASSESSMENTS = ["Supported", "Contradicted", "Mixed Evidence", "Insufficient Evidence"] as const;
 const VERDICTS = ["Supported", "Partially supported", "Not supported", "Insufficient evidence"] as const;
 
-let cachedModel: string | null = null;
+/** Every analysis call uses this model; a refusal falls back server-side (see chatJson). */
+export const MODEL = "claude-opus-5-5";
 
-/** OPENAI_MODEL, or the first GPT-6 model this key can see. */
-export async function resolveModel(apiKey: string): Promise<string> {
-  const fixed = process.env.OPENAI_MODEL?.trim();
-  if (fixed) return fixed;
-  if (cachedModel) return cachedModel;
-  const res = await fetch(`${OPENAI_BASE_URL}/models`, { headers: { Authorization: `Bearer ${apiKey}` } });
-  const text = await res.text();
-  if (!res.ok) throw new Error(`OpenAI /models ${res.status}: ${text}`);
-  const ids = ((JSON.parse(text) as { data?: Array<{ id: string }> }).data ?? []).map((m) => m.id);
-  // Text chat models only: skip audio, realtime, speech, image and search variants.
-  const chat = ids.filter((id) => id.startsWith("gpt-6") && !/audio|realtime|tts|transcribe|image|search/.test(id));
-  const pick = PREFERRED.find((p) => ids.includes(p)) ?? chat.sort()[0];
-  if (!pick) {
-    throw new Error(
-      `No GPT-6 model is available to this key. Set OPENAI_MODEL in .env. Models seen: ${ids
-        .filter((id) => id.startsWith("gpt"))
-        .slice(0, 20)
-        .join(", ")}`,
-    );
-  }
-  cachedModel = pick;
-  return pick;
-}
+let client: Anthropic | null = null;
 
-/** One Chat Completions call that must return a JSON object. */
-export async function chatJson(
-  apiKey: string,
-  model: string,
-  system: string,
-  user: string,
-): Promise<string> {
-  const res = await fetch(`${OPENAI_BASE_URL}/chat/completions`, {
-    method: "POST",
-    headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
-    body: JSON.stringify({
-      model,
-      messages: [
-        { role: "system", content: system },
-        { role: "user", content: user },
-      ],
-      response_format: { type: "json_object" },
-      // Room for reasoning models, which spend completion tokens thinking.
-      max_completion_tokens: 12000,
-    }),
+/** One Messages API call whose reply must be a JSON object: the JSON text, and the model that answered. */
+export async function chatJson(system: string, user: string): Promise<{ raw: string; model: string }> {
+  // Created on first use, after dotenv has loaded ANTHROPIC_API_KEY.
+  client ??= new Anthropic();
+  const msg = await client.beta.messages.create({
+    model: MODEL,
+    max_tokens: 16000,
+    output_config: { effort: "high" },
+    // A policy decline is retried on a fallback model inside the same call.
+    betas: ["server-side-fallback-2026-07-01"],
+    fallbacks: "default",
+    system,
+    messages: [{ role: "user", content: user }],
   });
-  const text = await res.text();
-  if (!res.ok) throw new Error(`OpenAI ${model} ${res.status}: ${text}`);
-  const data = JSON.parse(text) as {
-    choices?: Array<{ message?: { content?: string | null }; finish_reason?: string }>;
-  };
-  const choice = data.choices?.[0];
-  const content = choice?.message?.content ?? "";
-  // A reply cut off by the token limit is incomplete JSON: say so instead of failing to parse it.
-  if (choice?.finish_reason === "length") {
-    throw new Error(`OpenAI ${model} hit the output token limit before finishing its reply.`);
+  if (msg.stop_reason === "max_tokens") {
+    throw new Error(`${msg.model} hit the output token limit before finishing its reply.`);
   }
-  if (!content) throw new Error(`OpenAI ${model} returned no content: ${text.slice(0, 500)}`);
-  return content;
+  if (msg.stop_reason === "refusal") throw new Error(`${msg.model} declined to answer this request.`);
+  const text = msg.content.flatMap((b) => (b.type === "text" ? [b.text] : [])).join("");
+  // shortcut: takes the outermost {...} in case the reply adds a code fence or prose; move to
+  // output_config.format JSON schemas if replies still fail to parse.
+  const raw = text.match(/\{[\s\S]*\}/)?.[0];
+  if (!raw) throw new Error(`${msg.model} returned no JSON: ${text.slice(0, 500)}`);
+  return { raw, model: msg.model };
 }
 
 /** The non-empty strings of a JSON value that should be a string array. */
@@ -207,8 +173,7 @@ export function formatInterviews(ivs: InterviewIn[]): string {
 
 export function registerValidationRoute(app: Express): void {
   app.post("/api/thesis-validation", async (req, res) => {
-    const apiKey = process.env.OPENAI_API_KEY?.trim();
-    if (!apiKey) return res.status(500).json({ error: "No OPENAI_API_KEY in .env." });
+    if (!process.env.ANTHROPIC_API_KEY?.trim()) return res.status(500).json({ error: "No ANTHROPIC_API_KEY in .env." });
     const body = (req.body ?? {}) as {
       company?: string;
       thesis?: string;
@@ -220,11 +185,12 @@ export function registerValidationRoute(app: Express): void {
     if (!hyps.length) return res.status(400).json({ error: "No hypotheses to validate." });
 
     const startedAt = Date.now();
-    let model = "";
+    let model = MODEL;
     try {
-      model = await resolveModel(apiKey);
       const user = buildUserMessage(String(body.company ?? ""), String(body.thesis ?? ""), hyps, ivs);
-      const raw = await chatJson(apiKey, model, SYSTEM, user);
+      const out = await chatJson(SYSTEM, user);
+      const raw = out.raw;
+      model = out.model;
       const parsed = JSON.parse(raw) as {
         overall?: { verdict?: string; summary?: string };
         hypotheses?: Array<{
@@ -298,7 +264,7 @@ export function registerValidationRoute(app: Express): void {
   });
 }
 
-// --- Next research round, also by GPT-6 ----------------------------------------
+// --- Next research round, also by Claude ---------------------------------------
 
 const NEXT_ROUND_SYSTEM = `You are a senior private equity diligence analyst planning the next round of short phone interviews (about one minute each) to test an investment thesis. You get the thesis, its hypotheses with the latest assessment of each from the completed interviews, the open research gaps, the interview transcripts so far, and the consultant's contact list.
 
@@ -337,8 +303,7 @@ interface ContactIn {
  */
 export function registerNextRoundRoute(app: Express): void {
   app.post("/api/next-round", async (req, res) => {
-    const apiKey = process.env.OPENAI_API_KEY?.trim();
-    if (!apiKey) return res.status(500).json({ error: "No OPENAI_API_KEY in .env." });
+    if (!process.env.ANTHROPIC_API_KEY?.trim()) return res.status(500).json({ error: "No ANTHROPIC_API_KEY in .env." });
     const body = (req.body ?? {}) as {
       company?: string;
       thesis?: string;
@@ -386,10 +351,11 @@ export function registerNextRoundRoute(app: Express): void {
     ].join("\n\n");
 
     const startedAt = Date.now();
-    let model = "";
+    let model = MODEL;
     try {
-      model = await resolveModel(apiKey);
-      const raw = await chatJson(apiKey, model, NEXT_ROUND_SYSTEM, user);
+      const out = await chatJson(NEXT_ROUND_SYSTEM, user);
+      const raw = out.raw;
+      model = out.model;
       const parsed = JSON.parse(raw) as {
         hypotheses?: Array<{ based_on?: string; title?: string; description?: string; why?: string }>;
         people?: Array<{
@@ -441,7 +407,7 @@ export function registerNextRoundRoute(app: Express): void {
   });
 }
 
-// --- Initial questions: GPT-6 writes the opening questions per person ---------
+// --- Initial questions: Claude writes the opening questions per person --------
 
 const INITIAL_SYSTEM = [
   "You design the opening questions for a short phone interview that a private equity firm's",
@@ -469,9 +435,7 @@ const INITIAL_SYSTEM = [
  */
 export function registerInitialQuestionsRoute(app: Express): void {
   app.post("/api/initial-questions", async (req, res) => {
-    // Written by OpenAI (GPT-6), like the Findings page.
-    const openaiKey = process.env.OPENAI_API_KEY?.trim();
-    if (!openaiKey) return res.status(500).json({ error: "No OPENAI_API_KEY in .env." });
+    if (!process.env.ANTHROPIC_API_KEY?.trim()) return res.status(500).json({ error: "No ANTHROPIC_API_KEY in .env." });
     const { company = "", thesis = "", person = {}, hypotheses = [] } = req.body ?? {};
     const p = person as { name?: string; title?: string; description?: string; source?: string };
     const hyps = Array.isArray(hypotheses)
@@ -494,10 +458,11 @@ export function registerInitialQuestionsRoute(app: Express): void {
       .filter(Boolean)
       .join("\n\n");
     const startedAt = Date.now();
-    let model = "";
+    let model = MODEL;
     try {
-      model = await resolveModel(openaiKey);
-      const raw = await chatJson(openaiKey, model, INITIAL_SYSTEM, user);
+      const out = await chatJson(INITIAL_SYSTEM, user);
+      const raw = out.raw;
+      model = out.model;
       const parsed = JSON.parse(raw) as {
         audience?: unknown;
         objectives?: unknown;

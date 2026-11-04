@@ -41,10 +41,10 @@ export interface PlanExpert {
   hypothesisIds: string[];
   objectives: string;
   questions: PlanQuestion[];
-  /** Who the person is, as GPT-6 judged it; picks the live call's question style. */
+  /** Who the person is, as Claude judged it; picks the live call's question style. */
   audience?: "customer" | "expert";
-  /** Where the questions came from: GPT-6, or the built-in template (with why). "claude" is the old name in saved projects. */
-  questionSource?: "gpt" | "claude" | "template";
+  /** Where the questions came from: Claude, or the built-in template (with why). */
+  questionSource?: "claude" | "template";
   questionNote?: string;
 }
 
@@ -90,7 +90,7 @@ export interface Interview {
   sessionId?: string;
 }
 
-/** GPT-6's validation of the investment thesis against completed interviews. */
+/** Claude's validation of the investment thesis against completed interviews. */
 export interface ThesisValidationResult {
   at: string;
   model: string;
@@ -112,18 +112,18 @@ export interface ThesisValidationResult {
     nextStep: string;
     priority: "high" | "medium" | "low";
   }>;
-  /** Quotes GPT returned that were not in the transcripts, so were left out. */
+  /** Quotes Claude returned that were not in the transcripts, so were left out. */
   droppedQuotes: number;
 }
 
-/** GPT-6's proposal for the next research round, ready to become the plan. */
+/** Claude's proposal for the next research round, ready to become the plan. */
 export interface NextRoundProposal {
   at: string;
   model: string;
   /** The thesis validation it was based on (its `at`); a newer validation re-proposes. */
   basedOn: string;
   plan: ResearchPlan;
-  /** People GPT-6 suggests recruiting, added as contacts when the round is created. */
+  /** People Claude suggests recruiting, added as contacts when the round is created. */
   newExperts: Expert[];
   /** Why each new hypothesis is worth testing, by hypothesis id. */
   why: Record<string, string>;

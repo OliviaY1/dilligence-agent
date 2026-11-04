@@ -11,9 +11,9 @@ import type {
 } from "./types";
 
 /**
- * The next research round, proposed by GPT-6 (POST /api/next-round,
+ * The next research round, proposed by Claude (POST /api/next-round,
  * server/validation.ts) from everything so far: the thesis and hypotheses,
- * GPT-6's latest assessments and research gaps, every completed transcript,
+ * Claude's latest assessments and research gaps, every completed transcript,
  * and the contact list. It proposes sharper hypotheses, who to interview
  * (existing contacts or new profiles to recruit) and their questions.
  * The proposal is saved on the project; a newer thesis validation re-proposes.
@@ -120,7 +120,7 @@ async function requestNextRound(p: DiligenceProject): Promise<NextRoundProposal>
       objectives: person.objectives,
       questions: person.questions.map((text) => ({ id: uid("q"), text })),
       audience: person.audience,
-      questionSource: "gpt",
+      questionSource: "claude",
       questionNote: `Written by ${body.model} for round ${roundNo} (${person.audience === "customer" ? "a customer" : "an industry expert"})`,
     };
   });
@@ -135,7 +135,7 @@ async function requestNextRound(p: DiligenceProject): Promise<NextRoundProposal>
   };
 }
 
-/** Archive this round and make GPT-6's proposal the new plan (adding any new people as contacts). */
+/** Archive this round and make Claude's proposal the new plan (adding any new people as contacts). */
 export function startNextRoundFrom(p: DiligenceProject, proposal: NextRoundProposal): DiligenceProject {
   const { plan, newExperts } = proposal;
   const { nextRound: _used, ...rest } = p;

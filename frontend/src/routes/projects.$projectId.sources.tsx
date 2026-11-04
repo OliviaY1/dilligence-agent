@@ -92,8 +92,8 @@ function Sources() {
   };
 
   // The plan's structure (hypotheses, who to call) comes from the template; the
-  // opening questions for each person are written by GPT-6 from the thesis and
-  // their description (template questions stay if GPT-6 is unreachable).
+  // opening questions for each person are written by Claude from the thesis and
+  // their description (template questions stay if Claude is unreachable).
   const generate = async () => {
     setGenerating(true);
     const plan = await planWithInitialQuestions(project, generateMockResearchPlan(project));
@@ -392,7 +392,7 @@ function Sources() {
             <Loader2 className="mx-auto size-6 animate-spin text-primary" />
             <p className="mt-4 font-medium">Generating research plan</p>
             <p className="mt-1 text-sm text-muted-foreground">
-              GPT-6 is writing opening questions for {chosen.length} selected{" "}
+              Claude is writing opening questions for {chosen.length} selected{" "}
               {chosen.length === 1 ? "person" : "people"} from the investment thesis…
             </p>
           </Card>

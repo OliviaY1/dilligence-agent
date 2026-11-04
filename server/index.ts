@@ -271,7 +271,7 @@ app.get("/api/health", (_req, res) => res.json({ ok: true }));
 app.listen(PORT, () => {
   console.log(`Server listening on http://localhost:${PORT}`);
   if (!ANTHROPIC_API_KEY) {
-    console.warn("  ⚠ No ANTHROPIC_API_KEY in .env — /api/questions will return 500.");
+    console.warn("  ⚠ No ANTHROPIC_API_KEY in .env — question writing, live updates and findings will return 500.");
   }
   if (!BOSON_API_KEY) {
     console.warn(

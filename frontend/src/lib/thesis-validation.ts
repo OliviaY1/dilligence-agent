@@ -4,7 +4,7 @@ import { allHypotheses, allInterviews } from "./mock-service";
 import type { DiligenceProject, ThesisValidationResult } from "./types";
 
 /**
- * Investment thesis validation by GPT-6 (POST /api/thesis-validation on the
+ * Investment thesis validation by Claude (POST /api/thesis-validation on the
  * backend, server/validation.ts): the project's thesis and hypotheses, checked
  * against the transcripts of COMPLETED interviews only. The result is saved on
  * the project and recomputed when its inputs change (a new interview finishes,

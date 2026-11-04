@@ -3,7 +3,7 @@ import { readBackendJson } from "./backend";
 import type { DiligenceProject, Expert, InvestmentHypothesis, PlanExpert, ResearchPlan } from "./types";
 
 /**
- * Opening questions written by OpenAI (GPT-6) for one person, from the
+ * Opening questions written by Claude for one person, from the
  * project's investment thesis and the person's description
  * (POST /api/initial-questions on the backend in server/index.ts).
  */
@@ -41,7 +41,7 @@ export async function fetchInitialQuestions(
   }>(res);
   if (!res.ok || !body.questions?.length) throw new Error(body.error ?? `HTTP ${res.status}`);
   return {
-    model: body.prompt?.model ?? "GPT-6",
+    model: body.prompt?.model ?? "Claude",
     audience: body.audience === "customer" ? "customer" : "expert",
     objectives: body.objectives ?? "",
     hypothesisIds: body.hypothesisIds ?? [],
@@ -50,7 +50,7 @@ export async function fetchInitialQuestions(
 }
 
 /**
- * Replace one plan entry's questions with GPT-6's. On failure the entry keeps
+ * Replace one plan entry's questions with Claude's. On failure the entry keeps
  * its template questions and says why.
  */
 export async function withInitialQuestions(
@@ -70,14 +70,14 @@ export async function withInitialQuestions(
       objectives: q.objectives || pe.objectives,
       hypothesisIds: hypothesisIds.length ? hypothesisIds : pe.hypothesisIds,
       questions: q.questions.map((text) => ({ id: uid("q"), text })),
-      questionSource: "gpt",
+      questionSource: "claude",
       questionNote: `Written by ${q.model} for ${q.audience === "customer" ? "a customer" : "an industry expert"}`,
     };
   } catch (e) {
     return {
       ...pe,
       questionSource: "template",
-      questionNote: `Template questions — GPT-6 failed: ${e instanceof Error ? e.message : String(e)}`,
+      questionNote: `Template questions — Claude failed: ${e instanceof Error ? e.message : String(e)}`,
     };
   }
 }
