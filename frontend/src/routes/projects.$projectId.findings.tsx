@@ -1,5 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useCallback, useEffect, useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { AlertTriangle, ArrowRight, Compass, FileText, Loader2, RefreshCw } from "lucide-react";
 import { expertOf } from "@/components/research";
 import { AssessmentBadge } from "@/components/status";
@@ -12,7 +12,7 @@ import {
 } from "@/lib/mock-service";
 import { useProject } from "@/lib/store";
 import { useRoundView } from "@/lib/round-view";
-import type { DiligenceProject, Interview } from "@/lib/types";
+import type { DiligenceProject } from "@/lib/types";
 import { useThesisValidation } from "@/lib/thesis-validation";
 import { startNextRoundFrom, useNextRound } from "@/lib/next-round";
 import { useSyncSessions } from "@/components/live-call";
@@ -42,16 +42,11 @@ export const Route = createFileRoute("/projects/$projectId/findings")({
 
 function FindingsPage() {
   const { projectId } = Route.useParams();
-  const { project, update } = useProject(projectId);
+  const { project, update, updateInterview } = useProject(projectId);
   const navigate = useNavigate();
   const { clear: clearRound } = useRoundView();
   // Pick up live calls that finished while their sheet was closed.
-  const syncIv = useCallback(
-    (id: string, fn: (iv: Interview) => Interview) =>
-      update((p) => ({ ...p, interviews: p.interviews.map((i) => (i.id === id ? fn(i) : i)) })),
-    [update],
-  );
-  useSyncSessions(project, syncIv);
+  useSyncSessions(project, updateInterview);
   if (!project) return null;
   // Opening Findings means the consultant is done; one finished interview is enough.
   const anyDone = project.interviews.some((i) => i.status === "Completed");
@@ -138,17 +133,7 @@ function NextRoundCard({
         }
       />
       {n.error && !n.loading && <p className="mb-3 text-sm text-destructive">Proposal failed: {n.error}</p>}
-      {n.loading && (
-        <Card className="space-y-3 p-5">
-          <p className="flex items-center gap-2 text-sm">
-            <Loader2 className="size-4 animate-spin text-primary" />
-            GPT-6 is planning Round {roundNo} from everything so far…
-          </p>
-          <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
-            <div className="animate-indeterminate h-full w-1/3 rounded-full bg-primary" />
-          </div>
-        </Card>
-      )}
+      {n.loading && <ThinkingBar label={`GPT-6 is planning Round ${roundNo} from everything so far…`} />}
       {proposal && !n.loading && (
         <Card className="border-primary/30">
           <div className="space-y-5 p-5">
@@ -274,6 +259,7 @@ function ThesisValidationSection({
     return iv ? expertOf(project, iv.expertId)?.name ?? "Interviewee" : "Interviewee";
   };
   const r = v.result;
+  const done = ivs.filter((i) => i.status === "Completed" && i.transcript.length > 0).length;
 
   return (
     <section>
@@ -298,7 +284,12 @@ function ThesisValidationSection({
           No completed interview with a transcript yet. Finish an interview to validate the thesis.
         </Card>
       )}
-      {working && <ThinkingBar project={project} />}
+      {working && (
+        <ThinkingBar
+          label={`GPT-6 is reading ${done} completed interview${done === 1 ? "" : "s"} against the thesis…`}
+          note="Thesis validation and research gaps appear here when it is done."
+        />
+      )}
       {r && !working && (
         <div className="space-y-4">
           <Card className="overflow-hidden">
@@ -421,29 +412,26 @@ function ResearchGapsSection({
 }
 
 /** An indeterminate progress bar with the elapsed time, while GPT-6 works. */
-function ThinkingBar({ project }: { project: DiligenceProject }) {
+function ThinkingBar({ label, note }: { label: string; note?: string }) {
   const [t0] = useState(Date.now());
   const [now, setNow] = useState(Date.now());
   useEffect(() => {
     const id = setInterval(() => setNow(Date.now()), 500);
     return () => clearInterval(id);
   }, []);
-  const n = allInterviews(project).filter((i) => i.status === "Completed" && i.transcript.length > 0).length;
   return (
     <Card className="space-y-3 p-5">
       <div className="flex items-center justify-between text-sm">
         <span className="flex items-center gap-2">
           <Loader2 className="size-4 animate-spin text-primary" />
-          GPT-6 is reading {n} completed interview{n === 1 ? "" : "s"} against the thesis…
+          {label}
         </span>
         <span className="tabular-nums text-muted-foreground">{Math.floor((now - t0) / 1000)}s</span>
       </div>
       <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
         <div className="animate-indeterminate h-full w-1/3 rounded-full bg-primary" />
       </div>
-      <p className="text-xs text-muted-foreground">
-        Thesis validation and research gaps appear here when it is done.
-      </p>
+      {note && <p className="text-xs text-muted-foreground">{note}</p>}
     </Card>
   );
 }

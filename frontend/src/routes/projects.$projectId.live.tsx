@@ -1,6 +1,6 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { ArrowRight, MessageSquarePlus, Radio, Square, X } from "lucide-react";
-import { useCallback, useState } from "react";
+import { useState } from "react";
 import { expertOf, InterviewCard, QuestionStatusList, TranscriptViewer } from "@/components/research";
 import { InterviewStatusBadge } from "@/components/status";
 import { LiveCallBar, useLiveCall, useSyncSessions } from "@/components/live-call";
@@ -39,15 +39,10 @@ function LivePage() {
   const { projectId } = Route.useParams();
   const search = Route.useSearch();
   const navigate = useNavigate({ from: Route.fullPath });
-  const { project, update } = useProject(projectId);
+  const { project, updateInterview } = useProject(projectId);
   const { picked, select } = useRoundView();
   // Pick up live calls that finished while their sheet was closed.
-  const syncIv = useCallback(
-    (id: string, fn: (iv: Interview) => Interview) =>
-      update((p) => ({ ...p, interviews: p.interviews.map((i) => (i.id === id ? fn(i) : i)) })),
-    [update],
-  );
-  useSyncSessions(project, syncIv);
+  useSyncSessions(project, updateInterview);
   if (!project) return null;
 
   const rounds = roundsOf(project);
@@ -71,8 +66,6 @@ function LivePage() {
       />
     );
 
-  const setIv = (id: string, fn: (iv: Interview) => Interview) =>
-    update((p) => ({ ...p, interviews: p.interviews.map((i) => (i.id === id ? fn(i) : i)) }));
   const open = (id?: string, turn?: string) => {
     if (id) {
       const r = rounds.findIndex((rd) => rd.interviews.some((i) => i.id === id));
@@ -171,7 +164,7 @@ function LivePage() {
             interviewId={selected.id}
             highlightTurn={search.turn}
             onClose={() => open(undefined)}
-            setIv={setIv}
+            setIv={updateInterview}
           />
         )}
       </Sheet>

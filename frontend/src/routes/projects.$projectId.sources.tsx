@@ -30,7 +30,7 @@ import {
 } from "@/components/ui-kit";
 import { NETWORK_EXPERTS } from "@/lib/mock-data";
 import { generateMockResearchPlan, selectedExperts, uid } from "@/lib/mock-service";
-import { planWithClaudeQuestions } from "@/lib/initial-questions";
+import { planWithInitialQuestions } from "@/lib/initial-questions";
 import { useProject } from "@/lib/store";
 import type { Expert } from "@/lib/types";
 
@@ -92,11 +92,11 @@ function Sources() {
   };
 
   // The plan's structure (hypotheses, who to call) comes from the template; the
-  // opening questions for each person are written by Claude from the thesis and
-  // their description (template questions stay if Claude is unreachable).
+  // opening questions for each person are written by GPT-6 from the thesis and
+  // their description (template questions stay if GPT-6 is unreachable).
   const generate = async () => {
     setGenerating(true);
-    const plan = await planWithClaudeQuestions(project, generateMockResearchPlan(project));
+    const plan = await planWithInitialQuestions(project, generateMockResearchPlan(project));
     update((p) => ({ ...p, plan, interviews: [] }));
     setGenerating(false);
     navigate({ to: "/projects/$projectId/plan", params: { projectId } });

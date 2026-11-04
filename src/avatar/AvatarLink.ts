@@ -2,6 +2,8 @@
 // audio to it (LiveKit Agents' avatar data-stream protocol) instead of the local
 // speaker. livekit-client is loaded from a CDN.
 
+import { base64ToBytes } from "../audio/playback";
+
 const LIVEKIT_CLIENT_URL = "https://unpkg.com/livekit-client@2.15.0/dist/livekit-client.umd.js";
 
 const AUDIO_STREAM_TOPIC = "lk.audio_stream";
@@ -81,13 +83,6 @@ function loadLiveKit(): Promise<LkModule> {
     document.head.appendChild(s);
   });
   return lkPromise;
-}
-
-function base64ToBytes(b64: string): Uint8Array {
-  const bin = atob(b64);
-  const out = new Uint8Array(bin.length);
-  for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
-  return out;
 }
 
 // --- the link -----------------------------------------------------------------

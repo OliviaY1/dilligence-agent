@@ -28,7 +28,7 @@ import { createInterviewsFromPlan, roundsOf, uid } from "@/lib/mock-service";
 import { useProject } from "@/lib/store";
 import { useRoundView } from "@/lib/round-view";
 import type { DiligenceProject, PlanExpert } from "@/lib/types";
-import { withClaudeQuestions } from "@/lib/initial-questions";
+import { withInitialQuestions } from "@/lib/initial-questions";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/projects/$projectId/plan")({
@@ -190,7 +190,7 @@ function PlanExpertCard({
   const regenerate = async () => {
     if (!project.plan) return;
     setWriting(true);
-    const next = await withClaudeQuestions(project, project.plan, pe);
+    const next = await withInitialQuestions(project, project.plan, pe);
     onChange(() => next);
     setObj(next.objectives);
     setWriting(false);
@@ -218,7 +218,7 @@ function PlanExpertCard({
             <p
               className={cn(
                 "mt-1 text-xs",
-                pe.questionSource === "claude" ? "text-primary" : "text-warning",
+                pe.questionSource === "template" ? "text-warning" : "text-primary",
               )}
             >
               {pe.questionNote}

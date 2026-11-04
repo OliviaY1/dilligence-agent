@@ -1,8 +1,7 @@
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {
   Outlet,
   Link,
-  createRootRouteWithContext,
+  createRootRoute,
   useRouter,
   HeadContent,
   Scripts,
@@ -79,7 +78,7 @@ function ErrorComponent({ error, reset }: ErrorComponentProps) {
   );
 }
 
-export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()({
+export const Route = createRootRoute({
   head: () => ({
     meta: [
       { charSet: "utf-8" },
@@ -133,16 +132,12 @@ function RootShell({ children }: { children: ReactNode }) {
 }
 
 function RootComponent() {
-  const { queryClient } = Route.useRouteContext();
-
   return (
-    <QueryClientProvider client={queryClient}>
-      {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
-      <StoreProvider>
-        <RoundViewProvider>
-          <Outlet />
-        </RoundViewProvider>
-      </StoreProvider>
-    </QueryClientProvider>
+    // Required: nested routes render in <Outlet />. Removing it breaks all child routes.
+    <StoreProvider>
+      <RoundViewProvider>
+        <Outlet />
+      </RoundViewProvider>
+    </StoreProvider>
   );
 }

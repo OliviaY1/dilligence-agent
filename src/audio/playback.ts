@@ -2,11 +2,11 @@ import playbackWorkletSource from "./worklets/playback-processor.js?raw";
 import { addWorkletModule } from "./loadWorklet";
 import { AUDIO_RATE } from "../realtime/sessionConfig";
 
-function base64ToBytes(base64: string): ArrayBuffer {
+export function base64ToBytes(base64: string): Uint8Array {
   const binary = atob(base64);
   const bytes = new Uint8Array(binary.length);
   for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
-  return bytes.buffer;
+  return bytes;
 }
 
 /** Main-thread handle for the playback ring-buffer worklet. */
@@ -48,7 +48,7 @@ export class RingPlayer {
 
   enqueueBase64(base64: string): void {
     if (!this.node) return;
-    const buf = base64ToBytes(base64);
+    const buf = base64ToBytes(base64).buffer;
     this.node.port.postMessage({ type: "samples", payload: buf }, [buf]);
     this.onSpeakingChange?.(true);
   }

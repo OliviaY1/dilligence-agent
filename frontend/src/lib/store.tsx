@@ -12,7 +12,7 @@ import {
   missingSamples,
   withoutProject,
 } from "./mock-service";
-import type { DiligenceProject } from "./types";
+import type { DiligenceProject, Interview } from "./types";
 
 // v2: projects saved under the earlier key are dropped on purpose, so the demo
 // projects that shipped with the prototype no longer appear in a saved list.
@@ -97,5 +97,11 @@ export function useProject(id: string) {
     (fn: (p: DiligenceProject) => DiligenceProject) => updateProject(id, fn),
     [id, updateProject],
   );
-  return { project, update, hydrated };
+  /** Change one interview of the current round. */
+  const updateInterview = useCallback(
+    (ivId: string, fn: (iv: Interview) => Interview) =>
+      update((p) => ({ ...p, interviews: p.interviews.map((i) => (i.id === ivId ? fn(i) : i)) })),
+    [update],
+  );
+  return { project, update, updateInterview, hydrated };
 }

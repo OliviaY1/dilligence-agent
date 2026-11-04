@@ -41,10 +41,10 @@ export interface PlanExpert {
   hypothesisIds: string[];
   objectives: string;
   questions: PlanQuestion[];
-  /** Who the person is, as Claude judged it; picks the live call's question style. */
+  /** Who the person is, as GPT-6 judged it; picks the live call's question style. */
   audience?: "customer" | "expert";
-  /** Where the questions came from: Claude, or the built-in template (with why). */
-  questionSource?: "claude" | "template";
+  /** Where the questions came from: GPT-6, or the built-in template (with why). "claude" is the old name in saved projects. */
+  questionSource?: "gpt" | "claude" | "template";
   questionNote?: string;
 }
 

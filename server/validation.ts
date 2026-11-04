@@ -139,6 +139,10 @@ export async function chatJson(
   return content;
 }
 
+/** The non-empty strings of a JSON value that should be a string array. */
+export const strings = (v: unknown): string[] =>
+  Array.isArray(v) ? v.filter((x): x is string => typeof x === "string" && x.trim() !== "") : [];
+
 const norm = (s: string) =>
   s
     .toLowerCase()
@@ -411,8 +415,6 @@ export function registerNextRoundRoute(app: Express): void {
           why: String(h.why ?? "").trim(),
         }));
       const contactIds = new Set(contacts.map((c) => c.id));
-      const strings = (v: unknown) =>
-        Array.isArray(v) ? v.filter((x): x is string => typeof x === "string" && x.trim() !== "") : [];
       const people = (parsed.people ?? [])
         .map((p) => ({
           contactId: p.contact_id && contactIds.has(p.contact_id) ? p.contact_id : null,
@@ -435,6 +437,91 @@ export function registerNextRoundRoute(app: Express): void {
     } catch (err) {
       console.error("next round error:", err);
       return res.status(502).json({ error: err instanceof Error ? err.message : String(err), model });
+    }
+  });
+}
+
+// --- Initial questions: GPT-6 writes the opening questions per person ---------
+
+const INITIAL_SYSTEM = [
+  "You design the opening questions for a short phone interview that a private equity firm's",
+  "AI interviewer places to test an investment thesis. The call lasts about one minute and",
+  "every question is spoken aloud.",
+  "First decide who the person is: a customer (buys or uses the company's products or",
+  "services) or an industry expert (former employee, competitor, supplier, consultant,",
+  "analyst).",
+  "Then write the questions in the order to ask them: 3 for a customer, 4 for an expert.",
+  "Each one tests the thesis from this person's vantage point and is something they can",
+  "actually answer; under 15 words; one idea; open-ended, not yes/no; spoken English;",
+  "everyday words for customers, industry terms are fine for experts; no greeting, no",
+  "request for confidential information.",
+  "Also write the interview objectives in one sentence, and list the ids of the hypotheses",
+  "the questions test (only ids that were given).",
+  'Reply with JSON only: {"audience":"customer"|"expert","objectives":"...",',
+  '"hypothesis_ids":["..."],"questions":["..."]}',
+].join(" ");
+
+/**
+ * POST /api/initial-questions
+ *   { company, thesis, person: { name, title, description, source },
+ *     hypotheses?: [{ id, title, description }] }
+ *   -> { audience, objectives, hypothesisIds, questions, raw, prompt, ms }
+ */
+export function registerInitialQuestionsRoute(app: Express): void {
+  app.post("/api/initial-questions", async (req, res) => {
+    // Written by OpenAI (GPT-6), like the Findings page.
+    const openaiKey = process.env.OPENAI_API_KEY?.trim();
+    if (!openaiKey) return res.status(500).json({ error: "No OPENAI_API_KEY in .env." });
+    const { company = "", thesis = "", person = {}, hypotheses = [] } = req.body ?? {};
+    const p = person as { name?: string; title?: string; description?: string; source?: string };
+    const hyps = Array.isArray(hypotheses)
+      ? (hypotheses as Array<{ id?: string; title?: string; description?: string }>)
+      : [];
+    const user = [
+      `Company: ${String(company)}`,
+      `Investment thesis: ${String(thesis) || "(not given)"}`,
+      hyps.length
+        ? `Hypotheses:\n${hyps.map((h) => `- ${h.id}: ${h.title}${h.description ? ` — ${h.description}` : ""}`).join("\n")}`
+        : "",
+      [
+        "Person to call:",
+        `- Name: ${p.name ?? ""}`,
+        `- Title: ${p.title ?? ""}`,
+        `- Source: ${p.source ?? ""}`,
+        `- Description: ${p.description ?? ""}`,
+      ].join("\n"),
+    ]
+      .filter(Boolean)
+      .join("\n\n");
+    const startedAt = Date.now();
+    let model = "";
+    try {
+      model = await resolveModel(openaiKey);
+      const raw = await chatJson(openaiKey, model, INITIAL_SYSTEM, user);
+      const parsed = JSON.parse(raw) as {
+        audience?: unknown;
+        objectives?: unknown;
+        hypothesis_ids?: unknown;
+        questions?: unknown;
+      };
+      const questions = strings(parsed.questions).map((q) => q.trim());
+      if (!questions.length) throw new Error(`No questions in the reply: ${raw}`);
+      return res.json({
+        audience: parsed.audience === "customer" ? "customer" : "expert",
+        objectives: typeof parsed.objectives === "string" ? parsed.objectives : "",
+        hypothesisIds: strings(parsed.hypothesis_ids),
+        questions,
+        raw,
+        prompt: { model, system: INITIAL_SYSTEM, user },
+        ms: Date.now() - startedAt,
+      });
+    } catch (err) {
+      console.error("initial questions error:", err);
+      return res.status(502).json({
+        error: err instanceof Error ? err.message : String(err),
+        prompt: { model, system: INITIAL_SYSTEM, user },
+        ms: Date.now() - startedAt,
+      });
     }
   });
 }

@@ -50,10 +50,10 @@ export async function fetchInitialQuestions(
 }
 
 /**
- * Replace one plan entry's questions with Claude's. On failure the entry keeps
+ * Replace one plan entry's questions with GPT-6's. On failure the entry keeps
  * its template questions and says why.
  */
-export async function withClaudeQuestions(
+export async function withInitialQuestions(
   project: DiligenceProject,
   plan: ResearchPlan,
   pe: PlanExpert,
@@ -70,7 +70,7 @@ export async function withClaudeQuestions(
       objectives: q.objectives || pe.objectives,
       hypothesisIds: hypothesisIds.length ? hypothesisIds : pe.hypothesisIds,
       questions: q.questions.map((text) => ({ id: uid("q"), text })),
-      questionSource: "claude",
+      questionSource: "gpt",
       questionNote: `Written by ${q.model} for ${q.audience === "customer" ? "a customer" : "an industry expert"}`,
     };
   } catch (e) {
@@ -83,10 +83,10 @@ export async function withClaudeQuestions(
 }
 
 /** Every person in the plan, in parallel. */
-export async function planWithClaudeQuestions(
+export async function planWithInitialQuestions(
   project: DiligenceProject,
   plan: ResearchPlan,
 ): Promise<ResearchPlan> {
-  const experts = await Promise.all(plan.experts.map((pe) => withClaudeQuestions(project, plan, pe)));
+  const experts = await Promise.all(plan.experts.map((pe) => withInitialQuestions(project, plan, pe)));
   return { ...plan, experts };
 }

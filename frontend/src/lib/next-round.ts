@@ -120,7 +120,7 @@ async function requestNextRound(p: DiligenceProject): Promise<NextRoundProposal>
       objectives: person.objectives,
       questions: person.questions.map((text) => ({ id: uid("q"), text })),
       audience: person.audience,
-      questionSource: "claude",
+      questionSource: "gpt",
       questionNote: `Written by ${body.model} for round ${roundNo} (${person.audience === "customer" ? "a customer" : "an industry expert"})`,
     };
   });
