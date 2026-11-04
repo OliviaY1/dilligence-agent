@@ -297,12 +297,12 @@ export class CallController {
       this.error = `Higgs Realtime error: ${e?.message ?? e?.code ?? e?.type ?? JSON.stringify(evt)}`;
     }
 
-    // The interviewer finished a reply: every question actually said is now "said".
+    // The interviewer finished a reply: only the first pending question was asked
+    // (nextInstructions picks it), so a similar later question must not count too.
     const said = evt["transcript"];
     if (evt.type === SERVER.audioTranscriptDone && typeof said === "string") {
-      for (const r of this.rows) {
-        if (r.status === "pending" && saidLine(said, r.text)) r.status = "said";
-      }
+      const next = this.rows.find((r) => r.status === "pending");
+      if (next && saidLine(said, next.text)) next.status = "said";
     }
     // The interviewee's words arrived: let Claude revise the questions not said yet.
     if (evt.type === SERVER.transcriptionCompleted) void this.refreshQuestions();
