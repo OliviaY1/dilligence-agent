@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import express from "express";
 import dotenv from "dotenv";
 import { HttpError, loadLiveKitConfig, startAvatar, stopAvatar } from "./avatar";
+import { allowOrigin } from "./cors";
 import { registerInterviewRoutes } from "./interviews";
 import { registerProjectRoutes } from "./projects";
 import {
@@ -15,6 +16,8 @@ dotenv.config();
 
 const PORT = Number(process.env.PORT ?? 3000);
 const BOSON_BASE_URL = process.env.BOSON_BASE_URL ?? "https://api.boson.ai";
+// The deployed frontend's address, when it runs on its own host (see cors.ts).
+const FRONTEND_ORIGIN = process.env.FRONTEND_ORIGIN?.trim().replace(/\/+$/, "");
 
 // Ephemeral key lifetime (API allows 10–7200 s); one is minted per connection.
 const EPHEMERAL_TTL_SECONDS = 600;
@@ -42,6 +45,7 @@ function loadApiKey(): string | undefined {
 const BOSON_API_KEY = loadApiKey();
 
 const app = express();
+if (FRONTEND_ORIGIN) app.use("/api", allowOrigin(FRONTEND_ORIGIN));
 app.use(express.json({ limit: "2mb" }));
 registerInterviewRoutes(app);
 registerProjectRoutes(app);
@@ -272,6 +276,7 @@ app.get("/api/health", (_req, res) => res.json({ ok: true }));
 
 app.listen(PORT, () => {
   console.log(`Server listening on http://localhost:${PORT}`);
+  if (FRONTEND_ORIGIN) console.log(`  Accepting browser requests from ${FRONTEND_ORIGIN}`);
   if (!ANTHROPIC_API_KEY) {
     console.warn("  ⚠ No ANTHROPIC_API_KEY in .env — question writing, live updates and findings will return 500.");
   }

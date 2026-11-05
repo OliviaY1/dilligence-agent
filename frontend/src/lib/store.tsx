@@ -9,7 +9,7 @@ import {
   type ReactNode,
 } from "react";
 import { deriveStatus, missingSamples, withoutProject } from "./mock-service";
-import { readBackendJson } from "./backend";
+import { apiUrl, readBackendJson } from "./backend";
 import type { DiligenceProject, Interview } from "./types";
 
 // Projects live in the database behind /api/projects (server/projects.ts).
@@ -17,7 +17,7 @@ import type { DiligenceProject, Interview } from "./types";
 const OLD_KEY = "diligence-live:v2";
 
 async function api<T>(path: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(path, init);
+  const res = await fetch(apiUrl(path), init);
   const body = await readBackendJson<T & { error?: string }>(res);
   if (!res.ok) throw new Error(body.error ?? `HTTP ${res.status}`);
   return body;

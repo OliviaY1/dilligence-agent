@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { readBackendJson } from "./backend";
+import { apiUrl, readBackendJson } from "./backend";
 import { allHypotheses, allInterviews, uid } from "./mock-service";
 import { interviewsPayload } from "./validation-request";
 import type {
@@ -46,7 +46,7 @@ async function requestNextRound(p: DiligenceProject): Promise<NextRoundProposal>
       .filter((iv) => iv.status === "Completed")
       .map((iv) => iv.expertId),
   );
-  const res = await fetch("/api/next-round", {
+  const res = await fetch(apiUrl("/api/next-round"), {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({

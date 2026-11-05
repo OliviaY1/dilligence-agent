@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { readBackendJson } from "./backend";
+import { apiUrl, readBackendJson } from "./backend";
 import type { DiligenceProject, ThesisValidationResult } from "./types";
 import {
   completedInterviews,
@@ -18,7 +18,7 @@ import {
  */
 
 async function requestValidation(p: DiligenceProject): Promise<ThesisValidationResult> {
-  const res = await fetch("/api/thesis-validation", {
+  const res = await fetch(apiUrl("/api/thesis-validation"), {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(validationRequest(p)),

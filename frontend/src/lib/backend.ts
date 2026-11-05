@@ -1,3 +1,6 @@
+// Prefixes /api paths with the deployed backend's host (VITE_API_URL), if any.
+export { apiUrl } from "@higgs/api";
+
 /**
  * Read a JSON reply from the backend (repo root `npm run dev`, reached through
  * the dashboard's /api proxy). An empty or non-JSON reply means the backend did

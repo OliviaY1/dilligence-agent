@@ -1,5 +1,5 @@
 import { uid } from "./mock-service";
-import { readBackendJson } from "./backend";
+import { apiUrl, readBackendJson } from "./backend";
 import type { DiligenceProject, Expert, InvestmentHypothesis, PlanExpert, ResearchPlan } from "./types";
 
 /**
@@ -20,7 +20,7 @@ export async function fetchInitialQuestions(
   person: Expert,
   hypotheses: InvestmentHypothesis[],
 ): Promise<InitialQuestions> {
-  const res = await fetch("/api/initial-questions", {
+  const res = await fetch(apiUrl("/api/initial-questions"), {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({

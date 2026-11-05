@@ -1,5 +1,7 @@
 // Per-step interviewer instructions and the Claude question-update call.
 
+import { apiUrl } from "../api";
+
 export type Audience = "customer" | "expert";
 
 export function questionInstructions(question: string, name = "Alexa"): string {
@@ -36,7 +38,7 @@ export async function fetchQuestionChanges(payload: {
   transcript: string;
 }): Promise<QuestionChangeResult> {
   try {
-    const res = await fetch("/api/questions", {
+    const res = await fetch(apiUrl("/api/questions"), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),

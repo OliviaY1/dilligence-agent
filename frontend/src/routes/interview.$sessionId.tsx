@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { readBackendJson } from "@/lib/backend";
+import { apiUrl, readBackendJson } from "@/lib/backend";
 import { Clock, Mic, PhoneOff, Play } from "lucide-react";
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { CallController, type CallState } from "@higgs/call/CallController";
@@ -43,7 +43,7 @@ function IntervieweePage() {
   const duration = useCallDuration(st);
 
   useEffect(() => {
-    fetch(`/api/interviews/${sessionId}`)
+    fetch(apiUrl(`/api/interviews/${sessionId}`))
       .then(async (res) => {
         const body = await readBackendJson<Loaded & { error?: string }>(res);
         if (!res.ok) throw new Error(body.error ?? `HTTP ${res.status}`);
@@ -62,7 +62,7 @@ function IntervieweePage() {
         timer.current = null;
         const s = pending.current;
         if (!s) return;
-        void fetch(`/api/interviews/${sessionId}/state`, {
+        void fetch(apiUrl(`/api/interviews/${sessionId}/state`), {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ state: s }),
@@ -81,7 +81,7 @@ function IntervieweePage() {
 
   // The consultant can end the call from their tab.
   useEffect(() => {
-    const es = new EventSource(`/api/interviews/${sessionId}/events`);
+    const es = new EventSource(apiUrl(`/api/interviews/${sessionId}/events`));
     es.onmessage = (ev) => {
       const s = JSON.parse(ev.data as string) as InterviewSnapshot;
       if (s.endRequested) void ctrl.current?.stop();
