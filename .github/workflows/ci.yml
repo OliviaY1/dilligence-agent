@@ -30,3 +30,34 @@ jobs:
       - run: bun run test
       - run: bunx tsc --noEmit -p .
       - run: bun run build
+
+  # After both checks pass on main: redeploy the backend on Render, then build the
+  # frontend against it and publish it as the Cloudflare Worker (see README "Deployed setup").
+  deploy:
+    needs: [backend, frontend]
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    # One deploy at a time, so an older run never overwrites a newer one.
+    concurrency:
+      group: deploy
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v4
+      - name: Deploy backend (Render builds the latest commit on main)
+        env:
+          RENDER_DEPLOY_HOOK_URL: ${{ secrets.RENDER_DEPLOY_HOOK_URL }}
+        run: curl -fsS -X POST "$RENDER_DEPLOY_HOOK_URL"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - uses: oven-sh/setup-bun@v2
+      - name: Deploy frontend (Cloudflare Worker)
+        working-directory: frontend
+        env:
+          VITE_API_URL: https://dilligence-agent.onrender.com
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          bun install --frozen-lockfile
+          bun run build
+          npx --yes wrangler@4 deploy

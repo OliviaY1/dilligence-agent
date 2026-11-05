@@ -74,3 +74,5 @@ The two parts deploy separately: the backend as a Node web service (`npm ci`, th
 | `FRONTEND_ORIGIN` | Backend environment | The frontend's address, e.g. `https://diligence-frontend.<subdomain>.workers.dev`, without a trailing slash. Only this site may call the API from a browser |
 
 Leave both unset locally: the Vite proxy keeps everything on one address.
+
+Every push to `main` deploys both once the checks pass (the `deploy` job in `.github/workflows/ci.yml`). It needs three repository secrets: `RENDER_DEPLOY_HOOK_URL`, `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID`. To redeploy without a new commit, run the CI workflow on `main` from the Actions tab.
