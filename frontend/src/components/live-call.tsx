@@ -1,5 +1,5 @@
 import { Clock, ExternalLink, Mic, PhoneOff, Send, Sparkles } from "lucide-react";
-import { readBackendJson } from "@/lib/backend";
+import { apiUrl, readBackendJson } from "@/lib/backend";
 import { useCallback, useEffect, useRef, useState, type RefObject } from "react";
 import type { CallConfig, CallState } from "@higgs/call/CallController";
 import type { Audience } from "@higgs/call/script";
@@ -90,7 +90,7 @@ export function useLiveCall(project: DiligenceProject, iv: Interview, setIv: Set
   useEffect(() => {
     if (!sessionId) return;
     setError("");
-    const es = new EventSource(`/api/interviews/${sessionId}/events`);
+    const es = new EventSource(apiUrl(`/api/interviews/${sessionId}/events`));
     es.onmessage = (ev) => {
       const s = JSON.parse(ev.data as string) as InterviewSnapshot;
       setSnap(s);
@@ -129,7 +129,7 @@ export function useLiveCall(project: DiligenceProject, iv: Interview, setIv: Set
     };
     const person = project.experts.find((e) => e.id === iv.expertId);
     try {
-      const res = await fetch("/api/interviews", {
+      const res = await fetch(apiUrl("/api/interviews"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -166,7 +166,9 @@ export function useLiveCall(project: DiligenceProject, iv: Interview, setIv: Set
 
   const end = useCallback(async () => {
     if (!sessionId) return;
-    await fetch(`/api/interviews/${sessionId}/end`, { method: "POST" }).catch(() => undefined);
+    await fetch(apiUrl(`/api/interviews/${sessionId}/end`), { method: "POST" }).catch(
+      () => undefined,
+    );
   }, [sessionId]);
 
   const state = snap?.state ?? null;
@@ -331,7 +333,7 @@ export function useSyncSessions(
         const [ivId, sessionId] = pair.split(":");
         if (!ivId || !sessionId) continue;
         try {
-          const res = await fetch(`/api/interviews/${sessionId}`);
+          const res = await fetch(apiUrl(`/api/interviews/${sessionId}`));
           if (!res.ok) continue;
           const s = await readBackendJson<InterviewSnapshot>(res);
           const st = s.state;

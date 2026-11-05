@@ -1,3 +1,4 @@
+import { apiUrl } from "../api";
 import { RealtimeClient, type Activity, type ConnectionState } from "../realtime/RealtimeClient";
 import { SERVER, type ServerEvent } from "../realtime/events";
 import {
@@ -71,7 +72,7 @@ export interface CallState {
 }
 
 async function fetchToken(): Promise<string> {
-  const res = await fetch("/api/token");
+  const res = await fetch(apiUrl("/api/token"));
   const body = (await res.json()) as { value?: string; error?: string };
   if (!res.ok || !body.value) throw new Error(body.error ?? `HTTP ${res.status}`);
   return body.value;

@@ -2,6 +2,7 @@
 // audio to it (LiveKit Agents' avatar data-stream protocol) instead of the local
 // speaker. livekit-client is loaded from a CDN.
 
+import { apiUrl } from "../api";
 import { base64ToBytes } from "../audio/playback";
 
 const LIVEKIT_CLIENT_URL = "https://unpkg.com/livekit-client@2.15.0/dist/livekit-client.umd.js";
@@ -137,7 +138,7 @@ export class AvatarLink {
    * room, and wait until the avatar's audio track is playing here.
    */
   static async start(avatarId: string, cb: AvatarCallbacks): Promise<AvatarLink> {
-    const res = await fetch("/api/avatar/start", {
+    const res = await fetch(apiUrl("/api/avatar/start"), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ avatarId }),
@@ -305,7 +306,7 @@ export class AvatarLink {
 }
 
 async function stopSession(sessionId: string): Promise<void> {
-  await fetch("/api/avatar/stop", {
+  await fetch(apiUrl("/api/avatar/stop"), {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ sessionId }),

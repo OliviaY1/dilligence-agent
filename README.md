@@ -63,3 +63,16 @@ bun run build
 ```
 
 CI runs the same checks on every push and pull request.
+
+## Deployed setup
+
+The two parts deploy separately: the backend as a Node web service (`npm ci`, then `npm start`; it reads `PORT`), the frontend as a Cloudflare Worker named `diligence-frontend` (`bun run build`, then `npx wrangler deploy` in `frontend/`). Two settings connect them:
+
+| Setting | Where | Value |
+|---|---|---|
+| `VITE_API_URL` | Frontend build environment | The backend's address, e.g. `https://diligence-api.onrender.com`. Built into the pages, so changing it needs a rebuild |
+| `FRONTEND_ORIGIN` | Backend environment | The frontend's address, e.g. `https://diligence-frontend.<subdomain>.workers.dev`, without a trailing slash. Only this site may call the API from a browser |
+
+Leave both unset locally: the Vite proxy keeps everything on one address.
+
+Every push to `main` deploys both once the checks pass (the `deploy` job in `.github/workflows/ci.yml`). It needs three repository secrets: `RENDER_DEPLOY_HOOK_URL`, `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID`. To redeploy without a new commit, run the CI workflow on `main` from the Actions tab.

@@ -1,0 +1,6 @@
+// Cloudflare Worker for the frontend. `bun run build` merges this into the config it
+// generates (.output/server/wrangler.json), which `npx wrangler deploy` then uses.
+// Build with VITE_API_URL set to the backend's address (see src/api.ts at the repo root).
+{
+  "name": "diligence-frontend",
+}
