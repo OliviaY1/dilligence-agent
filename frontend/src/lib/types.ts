@@ -65,6 +65,9 @@ export interface ResearchRound {
 
 export type InterviewStatus = "Not Started" | "In Progress" | "Paused" | "Completed";
 
+/** Interview.topic of one whose transcript the consultant uploaded instead of running the call. */
+export const UPLOADED_TOPIC = "Uploaded transcript";
+
 export interface InterviewQuestion {
   id: string;
   text: string;

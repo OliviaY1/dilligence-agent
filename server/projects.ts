@@ -8,6 +8,7 @@ import type {
   ResearchPlan,
   ThesisValidationResult,
 } from "../frontend/src/lib/types";
+import { UPLOADED_TOPIC } from "../frontend/src/lib/types";
 import { mirror, type CallSnapshot } from "../frontend/src/lib/call-mirror";
 import { deriveStatus } from "../frontend/src/lib/mock-service";
 import {
@@ -304,7 +305,11 @@ export async function finishInterview(
   const touched = (p: DiligenceProject) => ({ ...p, status: deriveStatus(p), updatedAt: new Date().toISOString() });
 
   const p = await change((p) =>
-    touched({ ...p, interviews: p.interviews.map((iv) => (iv.id === interviewId ? mirror(iv, state) : iv)) }),
+    touched({
+      ...p,
+      // An uploaded transcript is the consultant's record: a call on the old link must not replace it.
+      interviews: p.interviews.map((iv) => (iv.id === interviewId && iv.topic !== UPLOADED_TOPIC ? mirror(iv, state) : iv)),
+    }),
   );
   if (!p || !completedInterviews(p).length || p.thesisValidation?.inputKey === validationInputKey(p)) return;
   const result = validationResult(p, await validate(validationRequest(p)));

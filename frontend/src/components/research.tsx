@@ -1,6 +1,12 @@
 import { CheckCircle2, Circle, CircleDot, Layers, Plus } from "lucide-react";
 import { useEffect, useRef } from "react";
-import type { DiligenceProject, Expert, Interview, InterviewQuestion } from "@/lib/types";
+import {
+  UPLOADED_TOPIC,
+  type DiligenceProject,
+  type Expert,
+  type Interview,
+  type InterviewQuestion,
+} from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { allHypotheses, roundsOf } from "@/lib/mock-service";
 import { useRoundView } from "@/lib/round-view";
@@ -98,7 +104,12 @@ export function InterviewCard({
   const expert = expertOf(project, interview.expertId);
   const answered = interview.questions.filter((q) => q.status === "answered").length;
   const current = interview.questions.find((q) => q.status === "current");
-  const pct = interview.questions.length ? (answered / interview.questions.length) * 100 : 0;
+  const pct =
+    interview.topic === UPLOADED_TOPIC
+      ? 100
+      : interview.questions.length
+        ? (answered / interview.questions.length) * 100
+        : 0;
   return (
     <button
       onClick={onOpen}
@@ -130,7 +141,9 @@ export function InterviewCard({
         <div className="flex justify-between text-xs text-muted-foreground">
           <span>Progress</span>
           <span>
-            {answered} of {interview.questions.length} questions
+            {interview.topic === UPLOADED_TOPIC
+              ? `${interview.transcript.length} turns uploaded`
+              : `${answered} of ${interview.questions.length} questions`}
           </span>
         </div>
         <div className="mt-1.5 h-1 overflow-hidden rounded-full bg-secondary">
@@ -191,7 +204,9 @@ export function TranscriptViewer({
                   t.speaker === "ai" ? "text-primary" : "text-foreground",
                 )}
               >
-                {t.speaker === "ai" ? (aiName ?? "AI Interviewer") : `Expert · ${expert?.name ?? ""}`}
+                {t.speaker === "ai"
+                  ? (aiName ?? "AI Interviewer")
+                  : `Expert · ${expert?.name ?? ""}`}
               </span>
               <span className="font-mono text-muted-foreground">{t.time}</span>
             </div>

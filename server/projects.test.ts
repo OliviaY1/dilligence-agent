@@ -139,6 +139,22 @@ describe("Supabase schema (Postgres in PGlite)", () => {
     expect((await loadProjects(exec, "p-1"))[0]!.thesisValidation!.model).toBe("fake");
   });
 
+  it("a call on an old link does not replace an uploaded transcript", async () => {
+    const p = project();
+    const uploaded = [{ id: "up-1", speaker: "expert" as const, text: "We switched clinics.", time: "" }];
+    p.interviews.push({ id: "iv-3", expertId: "e-1", status: "Completed", topic: "Uploaded transcript", questions: [], transcript: uploaded });
+    await saveProject(tx, p);
+    await finishInterview(
+      "p-1",
+      "iv-3",
+      { phase: "ended", startedAt: 1000, endedAt: 5000, questions: [], transcript: [{ id: "item-1", speaker: "interviewee", text: "Hello?", at: 2000, interrupted: false }] },
+      { exec, tx },
+      async () => ({ model: "fake", overall: { verdict: "Supported", summary: "" }, gaps: [], droppedQuotes: 0, hypotheses: [] }),
+    );
+    const [saved] = await loadProjects(exec, "p-1");
+    expect(saved!.interviews.find((iv) => iv.id === "iv-3")!.transcript).toEqual(uploaded);
+  });
+
   it("deleting a project removes all its rows", async () => {
     await saveProject(tx, project());
     await exec("delete from projects where id = $1", ["p-1"]);
