@@ -143,6 +143,11 @@ export interface DiligenceProject {
   id: string;
   company: string;
   thesis: string;
+  /**
+   * Claims as edited on the Claims page before the first plan; the plan is built
+   * from them. Unset: they follow the thesis. Once a plan exists claims live in it.
+   */
+  draftClaims?: InvestmentHypothesis[];
   status: ProjectStatus;
   networks: ExpertNetwork[];
   experts: Expert[];

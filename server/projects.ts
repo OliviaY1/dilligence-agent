@@ -42,6 +42,8 @@ interface Workspace {
   rounds: Array<{ hypothesisIds: string[]; experts: PlanExpert[]; approved: boolean; notes?: ResearchPlan["notes"] }>;
   validation?: Omit<ThesisValidationResult, "hypotheses">;
   nextRound?: DiligenceProject["nextRound"];
+  /** Claims edited before the first plan (rows in claims), in order. */
+  draftClaimIds?: string[];
 }
 
 export interface Rows {
@@ -76,17 +78,19 @@ export function toRows(p: DiligenceProject): Rows {
   // shortcut: a hypothesis id that repeats in a later round is stored once (the
   // first, as allHypotheses shows it); give rounds unique ids if that ever matters.
   const claims: Rows["claims"] = [];
-  plans.forEach((plan) =>
-    plan.hypotheses.forEach((h) => {
-      if (claims.some((c) => c.id === h.id)) return;
-      const a = assessed.get(h.id);
-      claims.push({
-        project_id: p.id, id: h.id, round: h.round ?? 1, title: h.title, description: h.description,
-        evidence_needed: h.evidence, origin: h.origin ?? null,
-        status: a?.assessment ?? null, confidence: a?.confidence ?? null, rationale: a?.rationale ?? null,
-      });
-    }),
-  );
+  const addClaim = (h: InvestmentHypothesis) => {
+    if (claims.some((c) => c.id === h.id)) return;
+    const a = assessed.get(h.id);
+    claims.push({
+      project_id: p.id, id: h.id, round: h.round ?? 1, title: h.title, description: h.description,
+      evidence_needed: h.evidence, origin: h.origin ?? null,
+      status: a?.assessment ?? null, confidence: a?.confidence ?? null, rationale: a?.rationale ?? null,
+    });
+  };
+  plans.forEach((plan) => plan.hypotheses.forEach(addClaim));
+  // Before the first plan, the claims edited on the Claims page.
+  const drafts = p.plan ? undefined : p.draftClaims;
+  drafts?.forEach(addClaim);
 
   const interviews: Rows["interviews"] = ivRounds.flatMap((ivs, r) =>
     ivs.map((iv, i) => ({
@@ -127,6 +131,7 @@ export function toRows(p: DiligenceProject): Rows {
         })),
         ...(validation ? { validation } : {}),
         ...(p.nextRound ? { nextRound: p.nextRound } : {}),
+        ...(drafts ? { draftClaimIds: drafts.map((h) => h.id) } : {}),
       },
     },
     interviewees: p.experts.map((e, i) => ({
@@ -185,6 +190,9 @@ export function fromRows(r: Rows): DiligenceProject {
   if (rounds.length > 1) p.pastRounds = rounds.slice(0, -1);
   if (ws.selectedExpertIds) p.selectedExpertIds = ws.selectedExpertIds;
   if (ws.nextRound) p.nextRound = ws.nextRound;
+  if (ws.draftClaimIds) {
+    p.draftClaims = ws.draftClaimIds.flatMap((id) => (claim.has(id) ? [hypothesis(claim.get(id)!)] : []));
+  }
   if (ws.validation) {
     p.thesisValidation = {
       ...ws.validation,

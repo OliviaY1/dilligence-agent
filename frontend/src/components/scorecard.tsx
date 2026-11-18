@@ -304,26 +304,7 @@ export function Scorecard({
           </Button>
         </div>
 
-        <div
-          className="mt-5 flex gap-1"
-          role="img"
-          aria-label={`${supported} supported, ${contradicted} contradicted, ${open} open`}
-        >
-          {rows.map((row) => (
-            <div
-              key={row.id}
-              className="min-w-0 flex-1"
-              title={`${row.label} · ${row.title} · ${look(row).label}`}
-            >
-              <span className={cn("block h-2 rounded-full", look(row).edge)} />
-              <span className="mt-1.5 block truncate font-mono text-[10px] text-muted-foreground">
-                {row.label}
-              </span>
-            </div>
-          ))}
-        </div>
-
-        <dl className="mt-4 grid grid-cols-3 gap-4">
+        <dl className="mt-5 grid grid-cols-3 gap-4">
           {[
             ["Supported", supported, "bg-success"],
             ["Contradicted", contradicted, "bg-destructive"],

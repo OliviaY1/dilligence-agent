@@ -66,6 +66,22 @@ describe("project rows", () => {
     expect(fromRows(toRows(project()))).toEqual(project());
   });
 
+  it("keeps the claims edited before the first plan, in order", () => {
+    const { plan: _p, pastRounds: _r, thesisValidation: _v, ...p } = project();
+    const unplanned: DiligenceProject = {
+      ...p,
+      interviews: [],
+      draftClaims: [
+        { id: "h-x", title: "Staff", description: "We believe vets stay.", evidence: "Turnover" },
+        { id: "h1", title: "Demand", description: "We believe demand grows.", evidence: "Visits" },
+      ],
+    };
+    expect(toRows(unplanned).project.workspace.draftClaimIds).toEqual(["h-x", "h1"]);
+    expect(fromRows(toRows(unplanned))).toEqual(unplanned);
+    // An empty list (every claim deleted) is kept too, rather than going back to the thesis.
+    expect(fromRows(toRows({ ...unplanned, draftClaims: [] })).draftClaims).toEqual([]);
+  });
+
   it("links evidence to the quoted sentence, even for results saved without a turnId", () => {
     const p = project();
     delete p.thesisValidation!.hypotheses[0]!.evidence[0]!.turnId;

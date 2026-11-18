@@ -94,7 +94,8 @@ export function PeoplePicker({
   const generate = async () => {
     setGenerating(true);
     const plan = await planWithInitialQuestions(project, generateMockResearchPlan(project));
-    update((p) => ({ ...p, plan, interviews: [] }));
+    // The plan now holds the claims, so the drafts it was built from go.
+    update(({ draftClaims: _, ...p }) => ({ ...p, plan, interviews: [] }));
     setGenerating(false);
     onDone();
   };
