@@ -19,9 +19,20 @@ describe("evidence scorecard", () => {
     expect(rows[2]!.quotes[0]!.who).toBe("Raj Patel");
   });
 
+  it("carries the thesis sentence and every quote with its source for the claim detail", () => {
+    const p = demo();
+    const h3 = scorecardRows(p)[2]!;
+    expect(h3.description).toBe(p.plan!.hypotheses[2]!.description);
+    expect(h3.evidence).toHaveLength(h3.evidenceCount);
+    expect(h3.evidence[0]).toMatchObject({ who: "Raj Patel", stance: "contradict" });
+    expect(h3.evidence[0]!.role).not.toBe("");
+  });
+
   it("shows every claim as unclear before any interview has finished", () => {
     const { thesisValidation: _, ...p } = demo();
-    expect(scorecardRows(p).every((r) => r.status === "unclear" && r.evidenceCount === 0)).toBe(true);
+    expect(scorecardRows(p).every((r) => r.status === "unclear" && r.evidenceCount === 0)).toBe(
+      true,
+    );
   });
 
   it("demo data is current, quotes only what interviewees said, and has a next round ready", () => {

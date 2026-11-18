@@ -38,8 +38,11 @@ const sessions = new Map<string, Session>();
 const MAX_SESSIONS = 200;
 
 function snapshot(s: Session) {
-  return { id: s.id, createdAt: s.createdAt, display: s.display, state: s.state, endRequested: s.endRequested };
+  const questions = (s.config as { questions?: unknown } | null)?.questions;
+  return { id: s.id, createdAt: s.createdAt, display: s.display, state: s.state, endRequested: s.endRequested, questions };
 }
+
+const phaseOf = (s: Session) => (s.state as { phase?: string } | null)?.phase ?? "idle";
 
 function broadcast(s: Session): void {
   const data = `data: ${JSON.stringify(snapshot(s))}\n\n`;
@@ -87,6 +90,20 @@ export function registerInterviewRoutes(app: Express): void {
       finishInterview(s.projectId, s.interviewId, st).catch((err) => console.error("after the call: saving or re-validating failed:", err));
     }
     return res.json({ ok: true, endRequested: s.endRequested });
+  });
+
+  // The consultant edited questions after sending the link: the call uses them if it has not started.
+  app.post("/api/interviews/:id/questions", (req, res) => {
+    const s = sessions.get(req.params.id);
+    if (!s) return res.status(404).json({ error: "unknown interview" });
+    const q: unknown = req.body?.questions;
+    if (!Array.isArray(q) || !q.every((x) => typeof x === "string" && x.trim())) {
+      return res.status(400).json({ error: "questions must be non-empty strings" });
+    }
+    if (phaseOf(s) !== "idle") return res.status(409).json({ error: "The call has already started." });
+    s.config = { ...(s.config as object), questions: q };
+    broadcast(s);
+    return res.json({ ok: true });
   });
 
   app.post("/api/interviews/:id/end", (req, res) => {

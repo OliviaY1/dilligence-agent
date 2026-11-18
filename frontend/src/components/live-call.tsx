@@ -30,6 +30,8 @@ export interface InterviewSnapshot {
   display: { interviewerName?: string; intervieweeName?: string; company?: string };
   state: CallState | null;
   endRequested: boolean;
+  /** The questions the call will ask; changes if the consultant edits them before it starts. */
+  questions?: string[];
 }
 
 /** The config the interviewee's tab runs (CallController's, without the DOM node). */
@@ -285,7 +287,7 @@ export function AvatarView({
   const a = state?.avatar;
   return (
     <div>
-      <p className="mb-2 text-xs font-medium uppercase tracking-wider text-muted-foreground">
+      <p className="mb-2 eyebrow">
         {name}
       </p>
       <div className="relative mx-auto aspect-[3/4] w-full max-w-[220px] overflow-hidden rounded-md border bg-muted">

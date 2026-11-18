@@ -54,6 +54,8 @@ export interface ResearchPlan {
   hypotheses: InvestmentHypothesis[];
   experts: PlanExpert[];
   approved: boolean;
+  /** The team's own notepad for this round's plan. */
+  notes?: string;
 }
 
 export interface ResearchRound {
@@ -106,7 +108,12 @@ export interface ThesisValidationResult {
     confidence: "high" | "medium" | "low";
     rationale: string;
     /** turnId: the transcript turn quoted (missing on results saved before it existed). */
-    evidence: Array<{ interviewId: string; turnId?: string; quote: string; stance: "support" | "contradict" | "neutral" }>;
+    evidence: Array<{
+      interviewId: string;
+      turnId?: string;
+      quote: string;
+      stance: "support" | "contradict" | "neutral";
+    }>;
   }>;
   /** What the research has not established yet, with a next step for each. */
   gaps: Array<{

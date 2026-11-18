@@ -1,7 +1,7 @@
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { ArrowRight, Info, Wand2 } from "lucide-react";
 import { useState } from "react";
-import { AppShell, PageHeader } from "@/components/app-shell";
+import { AppShell, PageBody, PageHeader } from "@/components/app-shell";
 import { Button, Card, Input, Label, Textarea } from "@/components/ui-kit";
 import { NETWORKS, OAKVILLE_COMPANY, OAKVILLE_THESIS } from "@/lib/mock-data";
 import { uid } from "@/lib/mock-service";
@@ -49,63 +49,48 @@ function NewDiligence() {
 
   return (
     <AppShell>
-      <div className="mx-auto max-w-3xl px-10 py-10">
-        <PageHeader
-          breadcrumb={
-            <>
-              <Link to="/" className="hover:text-foreground">
-                Projects
-              </Link>{" "}
-              / New diligence
-            </>
-          }
-          title="New Diligence"
-          description="Describe the target and the thesis you need to validate."
-          actions={
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => {
-                setCompany(OAKVILLE_COMPANY);
-                setThesis(OAKVILLE_THESIS);
-              }}
-            >
-              <Wand2 /> Use Sample Thesis
-            </Button>
-          }
-        />
-        <Card className="space-y-6 p-6">
+      <PageHeader
+        crumb
+        title="New diligence"
+        actions={
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => {
+              setCompany(OAKVILLE_COMPANY);
+              setThesis(OAKVILLE_THESIS);
+            }}
+          >
+            <Wand2 /> Use sample
+          </Button>
+        }
+      />
+      <PageBody narrow>
+        <Card className="space-y-5 p-5">
           <div>
-            <Label htmlFor="company">Target Company</Label>
-            <Input
-              id="company"
-              value={company}
-              onChange={(e) => setCompany(e.target.value)}
-              placeholder="Enter target company name"
-            />
+            <Label htmlFor="company">Target company</Label>
+            <Input id="company" value={company} onChange={(e) => setCompany(e.target.value)} />
           </div>
           <div>
-            <Label htmlFor="thesis">Investment Thesis</Label>
+            <Label htmlFor="thesis">Investment thesis</Label>
             <Textarea
               id="thesis"
               rows={16}
               value={thesis}
               onChange={(e) => setThesis(e.target.value)}
-              placeholder="Paste the investment thesis, including market attractiveness, growth opportunities, competitive advantages, and key assumptions..."
               className="min-h-80 resize-y"
             />
             <p className="mt-2 flex items-center gap-1.5 text-xs text-muted-foreground">
-              <Info className="size-3.5" /> Write each claim on its own line as “Label: We believe …”.
-              Each one is tested in the interviews.
+              <Info className="size-3.5" /> One claim per line: “Label: We believe …”
             </p>
           </div>
-          <div className="flex justify-end border-t pt-5">
+          <div className="flex justify-end border-t pt-4">
             <Button onClick={create} disabled={!company.trim() || !thesis.trim()}>
               Continue <ArrowRight />
             </Button>
           </div>
         </Card>
-      </div>
+      </PageBody>
     </AppShell>
   );
 }

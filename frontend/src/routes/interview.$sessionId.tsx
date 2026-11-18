@@ -85,6 +85,9 @@ function IntervieweePage() {
     es.onmessage = (ev) => {
       const s = JSON.parse(ev.data as string) as InterviewSnapshot;
       if (s.endRequested) void ctrl.current?.stop();
+      // Questions edited before the call started: start with the new ones.
+      const qs = s.questions;
+      if (qs && !ctrl.current) setInfo((i) => (i ? { ...i, config: { ...i.config, questions: qs } } : i));
     };
     return () => es.close();
   }, [sessionId]);
@@ -193,7 +196,7 @@ function IntervieweePage() {
         </div>
 
         <Card className="min-h-[24rem] p-5">
-          <p className="mb-3 text-xs font-medium uppercase tracking-wider text-muted-foreground">
+          <p className="mb-3 eyebrow">
             Transcript
           </p>
           <Transcript state={st} name={name} />
