@@ -52,9 +52,13 @@ export function hypothesesFromThesis(thesis: string): InvestmentHypothesis[] {
     id: `h${i + 1}`,
     title: p.label,
     description: p.text,
-    evidence: `Interview evidence for or against: ${p.text.replace(/^we believe\s+/i, "")}`,
+    evidence: evidenceFor(p.text),
   }));
 }
+
+/** What would test a "We believe …" claim. */
+export const evidenceFor = (description: string) =>
+  `Interview evidence for or against: ${description.replace(/^we believe\s+/i, "")}`;
 
 /**
  * The "Label: text" pillars of a thesis, whether they are on separate lines or
@@ -84,11 +88,45 @@ export function selectedExperts(p: DiligenceProject) {
   return p.experts.filter((e) => e.source === "Custom" || sel.has(e.id));
 }
 
+/** The claims a project starts with: the thesis's pillars, or the template for a free-text thesis. */
+export function startingClaims(p: DiligenceProject): InvestmentHypothesis[] {
+  const fromThesis = hypothesesFromThesis(p.thesis);
+  return fromThesis.length ? fromThesis : templateClaims(p.company || "the target");
+}
+
 export function generateMockResearchPlan(input: DiligenceProject): ResearchPlan {
   const project = { ...input, experts: selectedExperts(input) };
   const c = project.company || "the target";
-  const fromThesis = hypothesesFromThesis(project.thesis);
-  const template: InvestmentHypothesis[] = [
+  // Claims already chosen (the current plan's when people change, else the edited
+  // drafts) or the thesis's own go to everyone; the template's are split up.
+  const chosen = input.plan?.hypotheses ?? input.draftClaims;
+  const testsAll = !!chosen || hypothesesFromThesis(project.thesis).length > 0;
+  const hypotheses = chosen ?? startingClaims(project);
+  return {
+    hypotheses,
+    // Everyone the consultant selected (custom contacts always are) is in the plan.
+    experts: project.experts.map((e, i) => ({
+      expertId: e.id,
+      reason: `${e.title || "Expert"} with relevant perspective on ${c}.`,
+      hypothesisIds: testsAll
+        ? hypotheses.map((h) => h.id)
+        : [hypotheses[i % 4]!.id, hypotheses[(i + 1) % 4]!.id],
+      objectives: testsAll
+        ? `Test the investment thesis for ${c}.`
+        : `Test ${hypotheses[i % 4]!.title.toLowerCase()}.`,
+      questions: [
+        `What is your experience with ${c} or its direct competitors?`,
+        "What drives customers to stay with or leave a provider in this market?",
+        "How much pricing flexibility do operators in this sector really have?",
+        "Where do you see the largest operational risks over the next three years?",
+      ].map((text) => ({ id: uid("q"), text })),
+    })),
+    approved: false,
+  };
+}
+
+function templateClaims(c: string): InvestmentHypothesis[] {
+  return [
     {
       id: "h1",
       title: "Customer demand is resilient",
@@ -114,28 +152,6 @@ export function generateMockResearchPlan(input: DiligenceProject): ResearchPlan 
       evidence: "Realised synergies, cost benchmarks.",
     },
   ];
-  const hypotheses = fromThesis.length ? fromThesis : template;
-  return {
-    hypotheses,
-    // Everyone the consultant selected (custom contacts always are) is in the plan.
-    experts: project.experts.map((e, i) => ({
-      expertId: e.id,
-      reason: `${e.title || "Expert"} with relevant perspective on ${c}.`,
-      hypothesisIds: fromThesis.length
-        ? hypotheses.map((h) => h.id)
-        : [hypotheses[i % 4]!.id, hypotheses[(i + 1) % 4]!.id],
-      objectives: fromThesis.length
-        ? `Test the investment thesis for ${c}.`
-        : `Test ${hypotheses[i % 4]!.title.toLowerCase()}.`,
-      questions: [
-        `What is your experience with ${c} or its direct competitors?`,
-        "What drives customers to stay with or leave a provider in this market?",
-        "How much pricing flexibility do operators in this sector really have?",
-        "Where do you see the largest operational risks over the next three years?",
-      ].map((text) => ({ id: uid("q"), text })),
-    })),
-    approved: false,
-  };
 }
 
 export function createInterviewsFromPlan(plan: ResearchPlan): Interview[] {
