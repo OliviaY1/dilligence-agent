@@ -20,7 +20,12 @@ export const buttonVariants = cva(
         link: "text-primary underline-offset-4 hover:underline px-0 h-auto",
         destructive: "bg-destructive text-destructive-foreground hover:bg-destructive/90",
       },
-      size: { sm: "h-8 px-3 text-[13px]", md: "h-9 px-4", lg: "h-10 px-5", icon: "h-8 w-8" },
+      size: {
+        sm: "h-7 gap-1 px-2.5 text-xs",
+        md: "h-8 px-3 text-[13px]",
+        lg: "h-9 px-4",
+        icon: "size-8",
+      },
     },
     defaultVariants: { variant: "primary", size: "md" },
   },
@@ -36,7 +41,7 @@ export function Button({
 }
 
 const badgeVariants = cva(
-  "inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-xs font-medium whitespace-nowrap",
+  "inline-flex items-center gap-1.5 rounded-md px-1.5 py-0.5 text-xs font-medium whitespace-nowrap",
   {
     variants: {
       tone: {

@@ -1,5 +1,5 @@
 import { createFileRoute, Link, Outlet, useLocation } from "@tanstack/react-router";
-import { AppShell } from "@/components/app-shell";
+import { AppShell, PageBody, PageHeader } from "@/components/app-shell";
 import { ProjectStatusBadge } from "@/components/status";
 import { RoundIndicator } from "@/components/research";
 import { buttonVariants, EmptyState } from "@/components/ui-kit";
@@ -39,58 +39,51 @@ function ProjectLayout() {
   return (
     <AppShell>
       {!project ? (
-        <div className="mx-auto max-w-xl px-10 py-20">
+        <PageBody narrow>
           {hydrated ? (
             <EmptyState
               title="Project not found"
-              description="This project may have been removed or reset."
+              description="It may have been deleted."
               action={
-                <Link to="/" className={buttonVariants({ variant: "secondary" })}>
-                  Back to Projects
+                <Link to="/" className={buttonVariants({ variant: "secondary", size: "sm" })}>
+                  Back to projects
                 </Link>
               }
             />
           ) : (
-            <p className="text-center text-sm text-muted-foreground">Loading project…</p>
+            <p className="py-12 text-center text-sm text-muted-foreground">Loading…</p>
           )}
-        </div>
+        </PageBody>
       ) : (
         <>
-          <header className="sticky top-0 z-30 border-b bg-background/95 px-10 pt-6 backdrop-blur">
-            <div className="text-xs text-muted-foreground">
-              <Link to="/" className="hover:text-foreground">
-                Projects
-              </Link>{" "}
-              / {project.company}
-            </div>
-            <div className="mt-1.5 flex items-center gap-3">
-              <h1 className="font-serif text-2xl font-medium tracking-tight">
-                {project.company || "Untitled project"}
-              </h1>
-              <ProjectStatusBadge status={project.status} />
-              <div className="ml-auto">
-                <RoundIndicator project={project} interactive={roundAware} />
-              </div>
-            </div>
-            <nav className="-mb-px mt-4 flex gap-6">
-              {tabs.map((t, i) => (
+          <PageHeader
+            crumb
+            title={project.company || "Untitled project"}
+            meta={
+              <span className="hidden sm:inline-flex">
+                <ProjectStatusBadge status={project.status} />
+              </span>
+            }
+            actions={<RoundIndicator project={project} interactive={roundAware} />}
+          >
+            <nav className="-mb-px flex gap-5 overflow-x-auto px-4 md:px-6">
+              {tabs.map((t) => (
                 <Link
                   key={t.to}
                   to={t.to}
                   params={{ projectId }}
                   activeOptions={{ exact: "exact" in t }}
-                  className="border-b-2 border-transparent pb-2.5 text-sm text-muted-foreground hover:text-foreground"
-                  activeProps={{ className: "!border-primary !text-foreground font-medium" }}
+                  className="shrink-0 border-b-2 border-transparent pb-2.5 pt-1 text-[13px] text-muted-foreground hover:text-foreground"
+                  activeProps={{ className: "!border-foreground !text-foreground font-medium" }}
                 >
-                  <span className="mr-1.5 font-mono text-xs opacity-60">{i + 1}</span>
                   {t.label}
                 </Link>
               ))}
             </nav>
-          </header>
-          <div className="mx-auto max-w-6xl px-10 py-8">
+          </PageHeader>
+          <PageBody>
             <Outlet />
-          </div>
+          </PageBody>
         </>
       )}
     </AppShell>

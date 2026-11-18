@@ -128,7 +128,7 @@ function NextRoundCard({
       {proposal && !n.loading && (
         <Card className="border-primary/30">
           <div className="space-y-5 p-5">
-            <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+            <p className="eyebrow">
               Hypotheses to test in Round {roundNo}
             </p>
             {!proposal.plan.hypotheses.length && (
@@ -152,7 +152,7 @@ function NextRoundCard({
               </div>
             ))}
 
-            <p className="pt-2 text-xs font-medium uppercase tracking-wider text-muted-foreground">
+            <p className="pt-2 eyebrow">
               Who to interview
             </p>
             {proposal.plan.experts.map((pe) => {

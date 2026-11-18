@@ -6,6 +6,7 @@ import type {
   Interview,
   InvestmentHypothesis,
   PlanExpert,
+  ResearchPlan,
   ThesisValidationResult,
 } from "../frontend/src/lib/types";
 import { mirror, type CallSnapshot } from "../frontend/src/lib/call-mirror";
@@ -35,7 +36,7 @@ interface Workspace {
   networks: DiligenceProject["networks"];
   selectedExpertIds?: string[];
   /** One per round, oldest first; the last is the current plan. */
-  rounds: Array<{ hypothesisIds: string[]; experts: PlanExpert[]; approved: boolean }>;
+  rounds: Array<{ hypothesisIds: string[]; experts: PlanExpert[]; approved: boolean; notes?: ResearchPlan["notes"] }>;
   validation?: Omit<ThesisValidationResult, "hypotheses">;
   nextRound?: DiligenceProject["nextRound"];
 }
@@ -117,7 +118,10 @@ export function toRows(p: DiligenceProject): Rows {
       workspace: {
         networks: p.networks,
         ...(p.selectedExpertIds ? { selectedExpertIds: p.selectedExpertIds } : {}),
-        rounds: plans.map((pl) => ({ hypothesisIds: pl.hypotheses.map((h) => h.id), experts: pl.experts, approved: pl.approved })),
+        rounds: plans.map((pl) => ({
+          hypothesisIds: pl.hypotheses.map((h) => h.id), experts: pl.experts, approved: pl.approved,
+          ...(pl.notes ? { notes: pl.notes } : {}),
+        })),
         ...(validation ? { validation } : {}),
         ...(p.nextRound ? { nextRound: p.nextRound } : {}),
       },
@@ -153,6 +157,7 @@ export function fromRows(r: Rows): DiligenceProject {
       hypotheses: rd.hypothesisIds.flatMap((id) => (claim.has(id) ? [hypothesis(claim.get(id)!)] : [])),
       experts: rd.experts,
       approved: rd.approved,
+      ...(rd.notes ? { notes: rd.notes } : {}),
     },
     interviews: roundOf(i + 1),
   }));

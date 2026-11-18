@@ -39,6 +39,7 @@ const project = (): DiligenceProject => ({
     hypotheses: [{ id: "h-r2-1", title: "Pricing", description: "We believe prices can rise.", evidence: "Price talk", origin: "New", round: 2 }],
     experts: [{ expertId: "e-2", reason: "Expert", hypothesisIds: ["h-r2-1"], objectives: "Test pricing", questions: [{ id: "q2", text: "Can prices rise?" }] }],
     approved: true,
+    notes: "Rethink Ben's pricing question.",
   },
   interviews: [
     {

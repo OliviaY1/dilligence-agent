@@ -10,8 +10,11 @@ import {
   SectionTitle,
   Textarea,
 } from "@/components/ui-kit";
+import { Scorecard } from "@/components/scorecard";
 import { useProject } from "@/lib/store";
-import { allHypotheses, generateMockResearchPlan } from "@/lib/mock-service";
+import { useThesisValidation } from "@/lib/thesis-validation";
+import type { DiligenceProject } from "@/lib/types";
+import { generateMockResearchPlan } from "@/lib/mock-service";
 
 export const Route = createFileRoute("/projects/$projectId/")({
   component: Claims,
@@ -25,37 +28,41 @@ function Claims() {
   const [thesis, setThesis] = useState("");
   if (!project) return null;
 
-  // Before a plan exists, show the claims the plan will be generated with.
-  const claims = project.plan ? allHypotheses(project) : generateMockResearchPlan(project).hypotheses;
+  // Before a plan exists, preview the claims the plan will be generated with; after, score them.
+  const claims = project.plan ? [] : generateMockResearchPlan(project).hypotheses;
 
   return (
     <div className="space-y-8">
-      <section>
-        <SectionTitle
-          title="Claims to test"
-          description={
-            project.plan
-              ? "Fixed by the plan. To change them, edit the thesis, then regenerate questions on Plan."
-              : "Taken from the thesis: each line written as “Label: We believe …” becomes one claim."
-          }
-          action={
-            <Link to="/projects/$projectId/plan" params={{ projectId }} className={buttonVariants({ size: "sm" })}>
-              Next: plan interviews <ArrowRight />
-            </Link>
-          }
-        />
-        <Card className="divide-y text-sm">
-          {claims.map((h, i) => (
-            <div key={h.id} className="flex gap-3 px-5 py-3">
-              <span className="font-mono text-xs leading-5 text-muted-foreground">H{i + 1}</span>
-              <div>
-                <p className="font-medium">{h.title}</p>
-                <p className="text-muted-foreground">{h.description}</p>
+      {project.plan ? (
+        <Board project={project} update={update} />
+      ) : (
+        <section>
+          <SectionTitle
+            title="Claims to test"
+            description={"Each thesis line written as “Label: We believe …” becomes one claim."}
+            action={
+              <Link
+                to="/projects/$projectId/plan"
+                params={{ projectId }}
+                className={buttonVariants({ size: "sm" })}
+              >
+                Next: plan interviews <ArrowRight />
+              </Link>
+            }
+          />
+          <Card className="divide-y text-sm">
+            {claims.map((h, i) => (
+              <div key={h.id} className="flex gap-3 px-5 py-3">
+                <span className="font-mono text-xs leading-5 text-muted-foreground">H{i + 1}</span>
+                <div>
+                  <p className="font-medium">{h.title}</p>
+                  <p className="text-muted-foreground">{h.description}</p>
+                </div>
               </div>
-            </div>
-          ))}
-        </Card>
-      </section>
+            ))}
+          </Card>
+        </section>
+      )}
 
       <Card className="p-6">
         <SectionTitle
@@ -101,11 +108,21 @@ function Claims() {
             </div>
           </div>
         ) : (
-          <div className="whitespace-pre-line font-serif text-[15px] leading-relaxed text-foreground/90">
+          <div className="whitespace-pre-line text-sm leading-relaxed">
             {project.thesis || "No thesis provided."}
           </div>
         )}
       </Card>
     </div>
   );
+}
+
+function Board({
+  project,
+  update,
+}: {
+  project: DiligenceProject;
+  update: (fn: (p: DiligenceProject) => DiligenceProject) => void;
+}) {
+  return <Scorecard project={project} v={useThesisValidation(project, update)} />;
 }

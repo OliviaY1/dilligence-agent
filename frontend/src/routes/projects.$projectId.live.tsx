@@ -4,7 +4,6 @@ import { useState } from "react";
 import { expertOf, InterviewCard, QuestionStatusList, TranscriptViewer } from "@/components/research";
 import { InterviewStatusBadge } from "@/components/status";
 import { LiveCallBar, useLiveCall, useSyncSessions } from "@/components/live-call";
-import { Scorecard } from "@/components/scorecard";
 import {
   Button,
   buttonVariants,
@@ -78,7 +77,7 @@ function LivePage() {
 
   return (
     <div className="space-y-8">
-      <LiveScorecard project={project} update={update} />
+      <KeepScorecardFresh project={project} update={update} />
       {!ivs.length && (
         <EmptyState
           icon={<Radio />}
@@ -142,14 +141,16 @@ function LivePage() {
   );
 }
 
-function LiveScorecard({
+/** Re-scores claims as soon as a call ends, without showing the scorecard here. */
+function KeepScorecardFresh({
   project,
   update,
 }: {
   project: DiligenceProject;
   update: (fn: (p: DiligenceProject) => DiligenceProject) => void;
 }) {
-  return <Scorecard project={project} v={useThesisValidation(project, update)} />;
+  useThesisValidation(project, update);
+  return null;
 }
 
 function InterviewDetail({
@@ -226,7 +227,7 @@ function InterviewDetail({
       )}
       <div className="grid min-h-0 flex-1 grid-cols-[1fr_300px]">
         <div className="min-h-0 overflow-y-auto px-4 py-5">
-          <p className="mb-3 px-3 text-xs font-medium uppercase tracking-wider text-muted-foreground">
+          <p className="mb-3 px-3 eyebrow">
             Live transcript
           </p>
           <TranscriptViewer
@@ -238,7 +239,7 @@ function InterviewDetail({
         </div>
         <div className="min-h-0 space-y-6 overflow-y-auto border-l bg-muted/30 px-4 py-5">
           <div>
-            <p className="mb-2 text-xs font-medium uppercase tracking-wider text-muted-foreground">
+            <p className="mb-2 eyebrow">
               Interview questions{call.running ? " · live" : ""}
             </p>
             <QuestionStatusList questions={iv.questions} />
