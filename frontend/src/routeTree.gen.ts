@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as NewRouteImport } from './routes/new'
 import { Route as SettingsRouteImport } from './routes/settings'
+import { Route as UsageRouteImport } from './routes/usage'
 import { Route as InterviewSessionIdRouteImport } from './routes/interview.$sessionId'
 import { Route as ProjectsProjectIdRouteImport } from './routes/projects.$projectId'
 import { Route as ProjectsProjectIdIndexRouteImport } from './routes/projects.$projectId.index'
@@ -32,6 +33,11 @@ const NewRoute = NewRouteImport.update({
 const SettingsRoute = SettingsRouteImport.update({
   id: '/settings',
   path: '/settings',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const UsageRoute = UsageRouteImport.update({
+  id: '/usage',
+  path: '/usage',
   getParentRoute: () => rootRouteImport,
 } as any)
 const InterviewSessionIdRoute = InterviewSessionIdRouteImport.update({
@@ -70,6 +76,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/new': typeof NewRoute
   '/settings': typeof SettingsRoute
+  '/usage': typeof UsageRoute
   '/interview/$sessionId': typeof InterviewSessionIdRoute
   '/projects/$projectId': typeof ProjectsProjectIdRouteWithChildren
   '/projects/$projectId/findings': typeof ProjectsProjectIdFindingsRoute
@@ -81,6 +88,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/new': typeof NewRoute
   '/settings': typeof SettingsRoute
+  '/usage': typeof UsageRoute
   '/interview/$sessionId': typeof InterviewSessionIdRoute
   '/projects/$projectId/findings': typeof ProjectsProjectIdFindingsRoute
   '/projects/$projectId/live': typeof ProjectsProjectIdLiveRoute
@@ -92,6 +100,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/new': typeof NewRoute
   '/settings': typeof SettingsRoute
+  '/usage': typeof UsageRoute
   '/interview/$sessionId': typeof InterviewSessionIdRoute
   '/projects/$projectId': typeof ProjectsProjectIdRouteWithChildren
   '/projects/$projectId/findings': typeof ProjectsProjectIdFindingsRoute
@@ -105,6 +114,7 @@ export interface FileRouteTypes {
     | '/'
     | '/new'
     | '/settings'
+    | '/usage'
     | '/interview/$sessionId'
     | '/projects/$projectId'
     | '/projects/$projectId/findings'
@@ -116,6 +126,7 @@ export interface FileRouteTypes {
     | '/'
     | '/new'
     | '/settings'
+    | '/usage'
     | '/interview/$sessionId'
     | '/projects/$projectId/findings'
     | '/projects/$projectId/live'
@@ -126,6 +137,7 @@ export interface FileRouteTypes {
     | '/'
     | '/new'
     | '/settings'
+    | '/usage'
     | '/interview/$sessionId'
     | '/projects/$projectId'
     | '/projects/$projectId/findings'
@@ -138,6 +150,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   NewRoute: typeof NewRoute
   SettingsRoute: typeof SettingsRoute
+  UsageRoute: typeof UsageRoute
   InterviewSessionIdRoute: typeof InterviewSessionIdRoute
   ProjectsProjectIdRoute: typeof ProjectsProjectIdRouteWithChildren
 }
@@ -163,6 +176,13 @@ declare module '@tanstack/react-router' {
       path: '/settings'
       fullPath: '/settings'
       preLoaderRoute: typeof SettingsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/usage': {
+      id: '/usage'
+      path: '/usage'
+      fullPath: '/usage'
+      preLoaderRoute: typeof UsageRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/interview/$sessionId': {
@@ -231,6 +251,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   NewRoute: NewRoute,
   SettingsRoute: SettingsRoute,
+  UsageRoute: UsageRoute,
   InterviewSessionIdRoute: InterviewSessionIdRoute,
   ProjectsProjectIdRoute: ProjectsProjectIdRouteWithChildren,
 }

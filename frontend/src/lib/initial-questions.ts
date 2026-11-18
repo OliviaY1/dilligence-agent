@@ -24,6 +24,7 @@ export async function fetchInitialQuestions(
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
+      projectId: project.id,
       company: project.company,
       thesis: project.thesis,
       person: {

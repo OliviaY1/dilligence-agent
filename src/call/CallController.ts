@@ -69,7 +69,24 @@ export interface CallState {
   claude: { status: "idle" | "updating" | "error"; detail: string };
   /** The last error worth showing, or "". */
   error: string;
+  usage: CallUsage;
 }
+
+/** Billed use so far; the server prices it when the call ends (server/usage.ts). */
+export interface CallUsage {
+  realtime: { model: string; input: number; cached: number; output: number };
+  transcription: { model: string; seconds: number };
+  claude: { model: string; input: number; output: number };
+  avatar: { ms: number };
+}
+
+const noUsage = (): CallUsage => ({
+  realtime: { model: "higgs-realtime", input: 0, cached: 0, output: 0 },
+  transcription: { model: "higgs-stt-3.1", seconds: 0 },
+  claude: { model: "", input: 0, output: 0 },
+  avatar: { ms: 0 },
+});
+const num = (v: unknown) => (typeof v === "number" && Number.isFinite(v) ? v : 0);
 
 async function fetchToken(): Promise<string> {
   const res = await fetch(apiUrl("/api/token"));
@@ -102,6 +119,8 @@ export class CallController {
   private endedAt: number | null = null;
   private claudeState: CallState["claude"] = { status: "idle", detail: "" };
   private error = "";
+  private usage = noUsage();
+  private avatarLiveAt: number | null = null;
 
   private rows: QuestionRow[] = [];
   private transcript: TranscriptState = emptyTranscript;
@@ -161,6 +180,7 @@ export class CallController {
       endedAt: this.endedAt,
       claude: this.claudeState,
       error: this.error,
+      usage: this.usage,
       questions: this.rows.map((r) => ({
         id: r.id,
         text: r.text,
@@ -198,6 +218,7 @@ export class CallController {
     this.greetingAnswered = false;
     this.closingSent = false;
     this.transcript = emptyTranscript;
+    this.usage = noUsage();
     this.startedAt = null;
     this.endedAt = null;
     this.emit();
@@ -298,6 +319,19 @@ export class CallController {
       this.error = `Higgs Realtime error: ${e?.message ?? e?.code ?? e?.type ?? JSON.stringify(evt)}`;
     }
 
+    // Boson bills Higgs Realtime by tokens; each reply reports what it used.
+    if (evt.type === SERVER.responseDone) {
+      const u = (evt["response"] as { usage?: Record<string, unknown> } | undefined)?.usage;
+      const details = u?.["input_token_details"] as { cached_tokens?: unknown } | undefined;
+      this.usage.realtime.input += num(u?.["input_tokens"]);
+      this.usage.realtime.output += num(u?.["output_tokens"]);
+      this.usage.realtime.cached += num(details?.cached_tokens);
+    }
+    // ...and each transcript the seconds of speech transcribed: { type: "duration", seconds }.
+    if (evt.type === SERVER.transcriptionCompleted) {
+      this.usage.transcription.seconds += num((evt["usage"] as { seconds?: unknown } | undefined)?.seconds);
+    }
+
     // The interviewer finished a reply: only the first pending question was asked
     // (nextInstructions picks it), so a similar later question must not count too.
     const said = evt["transcript"];
@@ -320,6 +354,11 @@ export class CallController {
       remaining: this.rows.filter((r) => r.status === "pending").map((r) => r.text),
       transcript: toPlainText(this.transcript),
     });
+    if (result.usage) {
+      this.usage.claude.model = result.usage.model ?? this.usage.claude.model;
+      this.usage.claude.input += num(result.usage.input_tokens);
+      this.usage.claude.output += num(result.usage.output_tokens);
+    }
     if (result.status === "error") {
       this.claudeState = { status: "error", detail: result.error ?? "error" };
       this.emit();
@@ -352,6 +391,7 @@ export class CallController {
       this.avatar = link;
       this.client.setAvatar(link);
       this.avatarState = { status: "live", detail: link.sessionId, room: link.roomName };
+      this.avatarLiveAt = Date.now();
     } catch (e) {
       this.client.setAvatar(null);
       this.avatarState = { status: "error", detail: `${errText(e)} — continuing with voice only`, room: "" };
@@ -362,6 +402,9 @@ export class CallController {
   private async closeAvatar(status: "ended" | "error", detail = ""): Promise<void> {
     const link = this.avatar;
     this.avatar = null;
+    // Boson bills the avatar by minutes of video it streamed.
+    if (this.avatarLiveAt !== null) this.usage.avatar.ms += Date.now() - this.avatarLiveAt;
+    this.avatarLiveAt = null;
     this.client.setAvatar(null);
     if (!link) return;
     this.avatarState = { status, detail, room: "" };

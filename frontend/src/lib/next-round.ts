@@ -50,6 +50,7 @@ async function requestNextRound(p: DiligenceProject): Promise<NextRoundProposal>
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
+      projectId: p.id,
       company: p.company,
       thesis: p.thesis,
       round: roundNo,

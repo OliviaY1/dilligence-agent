@@ -23,6 +23,8 @@ export interface CallSnapshot {
     at: number;
     interrupted: boolean;
   }>;
+  /** What the call used, priced and recorded when it ends (server/usage.ts). */
+  usage?: unknown;
 }
 
 export const formatDuration = (ms: number) => {

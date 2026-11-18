@@ -1,4 +1,3 @@
-import postgres from "postgres";
 import type { Express } from "express";
 import type {
   DiligenceProject,
@@ -18,7 +17,11 @@ import {
   validationResult,
   type ValidationReply,
 } from "../frontend/src/lib/validation-request";
+import { db, type Exec, type Transact } from "./db";
+import { callUsageRows, recordUsage, type CallUsage } from "./usage";
 import { validateThesis } from "./validation";
+
+export type { Exec, Transact };
 
 /**
  * Projects in Supabase Postgres (supabase/migrations/*_init.sql).
@@ -205,10 +208,6 @@ export function fromRows(r: Rows): DiligenceProject {
   return p;
 }
 
-/** Runs one parameterized statement and returns its rows. */
-export type Exec = (text: string, params?: unknown[]) => Promise<any[]>;
-/** Runs a callback inside one transaction. */
-export type Transact = <T>(fn: (exec: Exec) => Promise<T>) => Promise<T>;
 
 // Each child table takes all of a project's rows as one JSON array parameter. The ::text
 // keeps the postgres driver from JSON-encoding the (already JSON) string a second time.
@@ -291,6 +290,7 @@ export async function finishInterview(
   validate: (body: ReturnType<typeof validationRequest>) => Promise<ValidationReply> = validateThesis as never,
 ): Promise<void> {
   if (!d) return;
+  await recordUsage(projectId, callUsageRows(state.usage as CallUsage | undefined), d.exec);
   /** Read, change and save one project in one transaction. */
   const change = async (fn: (p: DiligenceProject) => DiligenceProject) => {
     let out: DiligenceProject | undefined;
@@ -310,22 +310,6 @@ export async function finishInterview(
   const result = validationResult(p, await validate(validationRequest(p)));
   // Saved on the latest copy, so edits made while Claude worked are kept.
   await change((cur) => touched({ ...cur, thesisValidation: result }));
-}
-
-let sql: postgres.Sql | null = null;
-
-/** The Supabase connection, or null without DATABASE_URL. Created on first use, after dotenv. */
-function db(): { exec: Exec; tx: Transact } | null {
-  const url = process.env.DATABASE_URL?.trim();
-  if (!url) return null;
-  // prepare: false works with Supabase's transaction pooler too; SSL except on a local database.
-  sql ??= postgres(url, { prepare: false, ssl: /@(localhost|127\.0\.0\.1)[:/]/.test(url) ? false : "require" });
-  const s = sql;
-  const exec: Exec = (text, params = []) => s.unsafe(text, params as never[]);
-  return {
-    exec,
-    tx: (fn) => s.begin((t) => fn((text, params = []) => t.unsafe(text, params as never[]))) as never,
-  };
 }
 
 const NO_DB = { error: "No DATABASE_URL in .env (Supabase → Connect → Session pooler)." };

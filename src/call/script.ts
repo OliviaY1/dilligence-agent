@@ -24,6 +24,7 @@ export function saidLine(reply: string, line: string): boolean {
 
 export interface QuestionChangeResult {
   status: "ok" | "error";
+  usage?: { model?: string; input_tokens?: number; output_tokens?: number } | undefined;
   add?: string[];
   remove?: string[];
   error?: string;
@@ -43,9 +44,9 @@ export async function fetchQuestionChanges(payload: {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
     });
-    const body = (await res.json()) as { error?: string; add?: string[]; remove?: string[] };
+    const body = (await res.json()) as { error?: string; add?: string[]; remove?: string[]; usage?: QuestionChangeResult["usage"] };
     if (!res.ok) return { status: "error", error: body.error ?? `HTTP ${res.status}` };
-    return { status: "ok", add: body.add ?? [], remove: body.remove ?? [] };
+    return { status: "ok", add: body.add ?? [], remove: body.remove ?? [], usage: body.usage };
   } catch (e) {
     return { status: "error", error: e instanceof Error ? e.message : String(e) };
   }

@@ -85,6 +85,7 @@ export function registerInterviewRoutes(app: Express): void {
     s.state = req.body?.state ?? null;
     broadcast(s);
     const st = s.state as Parameters<typeof finishInterview>[2] | null;
+    // shortcut: saved on the first "ended" state, so usage reported after it (a late Haiku reply) is not recorded; fine for cents, record late usage if it matters.
     if (st?.phase === "ended" && !s.saved && s.projectId && s.interviewId) {
       s.saved = true;
       finishInterview(s.projectId, s.interviewId, st).catch((err) => console.error("after the call: saving or re-validating failed:", err));

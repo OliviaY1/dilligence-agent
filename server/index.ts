@@ -4,7 +4,9 @@ import dotenv from "dotenv";
 import { HttpError, loadLiveKitConfig, startAvatar, stopAvatar } from "./avatar";
 import { allowOrigin } from "./cors";
 import { registerInterviewRoutes } from "./interviews";
+import { migrate } from "./migrate";
 import { registerProjectRoutes } from "./projects";
+import { registerUsageRoute } from "./usage";
 import {
   registerInitialQuestionsRoute,
   registerNextRoundRoute,
@@ -49,6 +51,7 @@ if (FRONTEND_ORIGIN) app.use("/api", allowOrigin(FRONTEND_ORIGIN));
 app.use(express.json({ limit: "2mb" }));
 registerInterviewRoutes(app);
 registerProjectRoutes(app);
+registerUsageRoute(app);
 registerValidationRoute(app);
 registerNextRoundRoute(app);
 registerInitialQuestionsRoute(app);
@@ -126,7 +129,11 @@ app.post("/api/questions", async (req, res) => {
         .status(upstream.status)
         .json({ error: `Anthropic ${upstream.status}: ${body}`, prompt, ms: Date.now() - startedAt });
     }
-    const data = JSON.parse(body) as { content?: Array<{ type: string; text?: string }> };
+    const data = JSON.parse(body) as {
+      model?: string;
+      content?: Array<{ type: string; text?: string }>;
+      usage?: { input_tokens?: number; output_tokens?: number };
+    };
     const text = (data.content ?? [])
       .filter((c) => c.type === "text")
       .map((c) => c.text ?? "")
@@ -140,6 +147,8 @@ app.post("/api/questions", async (req, res) => {
       raw: text,
       prompt,
       ms: Date.now() - startedAt,
+      // Counted by the call and recorded with the project when it ends (server/usage.ts).
+      usage: { model: data.model ?? QUESTION_MODEL, ...data.usage },
     });
   } catch (err) {
     console.error("question update error:", err);
@@ -273,6 +282,15 @@ app.post("/api/avatar/stop", async (req, res) => {
 });
 
 app.get("/api/health", (_req, res) => res.json({ ok: true }));
+
+// Bring the database schema up to date before serving. A failure (database paused or
+// unreachable, bad SQL) is logged and the server still starts: voice calls need no database.
+try {
+  const applied = await migrate();
+  if (applied.length) console.log(`Database migrated: ${applied.join(", ")}`);
+} catch (err) {
+  console.error("⚠ Database migration failed; project routes may error until it succeeds:", err);
+}
 
 app.listen(PORT, () => {
   console.log(`Server listening on http://localhost:${PORT}`);

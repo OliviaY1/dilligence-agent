@@ -1,5 +1,5 @@
 import { Link, useParams } from "@tanstack/react-router";
-import { Compass, FolderKanban, Settings } from "lucide-react";
+import { CircleDollarSign, Compass, FolderKanban, Settings } from "lucide-react";
 import type { ReactNode } from "react";
 import { useStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
@@ -36,6 +36,9 @@ export function AppShell({ children }: { children: ReactNode }) {
           <Link to="/" className={navItem} activeOptions={{ exact: true }} activeProps={active}>
             <FolderKanban className="size-4" /> Projects
           </Link>
+          <Link to="/usage" className={navItem} activeProps={active}>
+            <CircleDollarSign className="size-4" /> API spend
+          </Link>
         </nav>
         {current && (
           <div className="mt-5">
@@ -66,6 +69,14 @@ export function AppShell({ children }: { children: ReactNode }) {
               activeProps={active}
             >
               <FolderKanban className="size-4" />
+            </Link>
+            <Link
+              to="/usage"
+              aria-label="API spend"
+              className={cn(navItem, "size-10 justify-center px-0")}
+              activeProps={active}
+            >
+              <CircleDollarSign className="size-4" />
             </Link>
             <Link
               to="/settings"

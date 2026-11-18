@@ -59,6 +59,7 @@ export function interviewsPayload(p: DiligenceProject) {
 /** The POST /api/thesis-validation body for a project. */
 export function validationRequest(p: DiligenceProject) {
   return {
+    projectId: p.id,
     company: p.company,
     thesis: p.thesis,
     hypotheses: allHypotheses(p).map((h) => ({

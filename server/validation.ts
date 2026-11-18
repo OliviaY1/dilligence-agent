@@ -1,4 +1,5 @@
 import Anthropic from "@anthropic-ai/sdk";
+import { recordUsage } from "./usage";
 import type { Express } from "express";
 
 /**
@@ -80,8 +81,12 @@ export const MODEL = "claude-opus-5-5";
 
 let client: Anthropic | null = null;
 
-/** One Messages API call whose reply must be a JSON object: the JSON text, and the model that answered. */
-export async function chatJson(system: string, user: string): Promise<{ raw: string; model: string }> {
+/** One Messages API call whose reply must be a JSON object: the JSON text, and the model that answered. Its cost is recorded for `projectId`. */
+export async function chatJson(
+  system: string,
+  user: string,
+  { projectId, source }: { projectId?: string; source: string },
+): Promise<{ raw: string; model: string }> {
   // Created on first use, after dotenv has loaded ANTHROPIC_API_KEY.
   client ??= new Anthropic();
   const msg = await client.beta.messages.create({
@@ -94,6 +99,9 @@ export async function chatJson(system: string, user: string): Promise<{ raw: str
     system,
     messages: [{ role: "user", content: user }],
   });
+  await recordUsage(projectId, [
+    { source, model: msg.model, inputTokens: msg.usage.input_tokens, outputTokens: msg.usage.output_tokens },
+  ]);
   if (msg.stop_reason === "max_tokens") {
     throw new Error(`${msg.model} hit the output token limit before finishing its reply.`);
   }
@@ -173,6 +181,7 @@ export function formatInterviews(ivs: InterviewIn[]): string {
 }
 
 export interface ValidationBody {
+  projectId?: string;
   company?: string;
   thesis?: string;
   hypotheses?: HypothesisIn[];
@@ -186,7 +195,7 @@ export async function validateThesis(body: ValidationBody) {
   if (!hyps.length) throw new Error("No hypotheses to validate.");
   const startedAt = Date.now();
   const user = buildUserMessage(String(body.company ?? ""), String(body.thesis ?? ""), hyps, ivs);
-  const out = await chatJson(SYSTEM, user);
+  const out = await chatJson(SYSTEM, user, { projectId: body.projectId, source: "Thesis validation" });
   const raw = out.raw;
   const model = out.model;
   const parsed = JSON.parse(raw) as {
@@ -317,6 +326,7 @@ export function registerNextRoundRoute(app: Express): void {
   app.post("/api/next-round", async (req, res) => {
     if (!process.env.ANTHROPIC_API_KEY?.trim()) return res.status(500).json({ error: "No ANTHROPIC_API_KEY in .env." });
     const body = (req.body ?? {}) as {
+      projectId?: string;
       company?: string;
       thesis?: string;
       round?: number;
@@ -365,7 +375,7 @@ export function registerNextRoundRoute(app: Express): void {
     const startedAt = Date.now();
     let model = MODEL;
     try {
-      const out = await chatJson(NEXT_ROUND_SYSTEM, user);
+      const out = await chatJson(NEXT_ROUND_SYSTEM, user, { projectId: body.projectId, source: "Next round plan" });
       const raw = out.raw;
       model = out.model;
       const parsed = JSON.parse(raw) as {
@@ -448,7 +458,7 @@ const INITIAL_SYSTEM = [
 export function registerInitialQuestionsRoute(app: Express): void {
   app.post("/api/initial-questions", async (req, res) => {
     if (!process.env.ANTHROPIC_API_KEY?.trim()) return res.status(500).json({ error: "No ANTHROPIC_API_KEY in .env." });
-    const { company = "", thesis = "", person = {}, hypotheses = [] } = req.body ?? {};
+    const { projectId, company = "", thesis = "", person = {}, hypotheses = [] } = req.body ?? {};
     const p = person as { name?: string; title?: string; description?: string; source?: string };
     const hyps = Array.isArray(hypotheses)
       ? (hypotheses as Array<{ id?: string; title?: string; description?: string }>)
@@ -472,7 +482,7 @@ export function registerInitialQuestionsRoute(app: Express): void {
     const startedAt = Date.now();
     let model = MODEL;
     try {
-      const out = await chatJson(INITIAL_SYSTEM, user);
+      const out = await chatJson(INITIAL_SYSTEM, user, { projectId: String(projectId ?? ""), source: "Interview questions" });
       const raw = out.raw;
       model = out.model;
       const parsed = JSON.parse(raw) as {

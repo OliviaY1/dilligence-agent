@@ -45,7 +45,7 @@ Ask the team for keys. Never commit `.env`.
 ## Working on the UI only
 
 You can change most of the UI with only `DATABASE_URL` set:
-- Projects are stored in Supabase (schema in `supabase/migrations/`). Run the SQL once per Supabase project: paste it into the SQL editor, or `supabase db push`
+- Projects are stored in Supabase (schema in `supabase/migrations/`). The server applies any new files there when it starts (recorded in `schema_migrations`), so a deploy keeps the database schema current. To change the schema, add a new numbered `.sql` file; never edit one that has already run
 - Click **Load sample projects** on the home page (or in Settings) to get demo data
 - Pages live in `frontend/src/routes/`, shared components in `frontend/src/components/`
 

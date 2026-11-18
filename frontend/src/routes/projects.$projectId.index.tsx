@@ -11,6 +11,7 @@ import {
   Textarea,
 } from "@/components/ui-kit";
 import { Scorecard } from "@/components/scorecard";
+import { SpendTable, useUsage } from "@/components/usage";
 import { useProject } from "@/lib/store";
 import { useThesisValidation } from "@/lib/thesis-validation";
 import type { DiligenceProject } from "@/lib/types";
@@ -113,7 +114,30 @@ function Claims() {
           </div>
         )}
       </Card>
+
+      <ProjectSpend projectId={projectId} />
     </div>
+  );
+}
+
+function ProjectSpend({ projectId }: { projectId: string }) {
+  const { rows, error } = useUsage();
+  return (
+    <section>
+      <SectionTitle
+        title="API spend"
+        description="What this project's Claude and Boson calls have cost, by model."
+      />
+      <Card>
+        {error ? (
+          <p className="px-5 py-4 text-sm text-destructive">{error}</p>
+        ) : !rows ? (
+          <p className="px-5 py-4 text-sm text-muted-foreground">Loading…</p>
+        ) : (
+          <SpendTable rows={rows.filter((r) => r.projectId === projectId)} />
+        )}
+      </Card>
+    </section>
   );
 }
 
