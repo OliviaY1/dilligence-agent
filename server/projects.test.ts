@@ -82,6 +82,14 @@ describe("project rows", () => {
     expect(fromRows(toRows({ ...unplanned, draftClaims: [] })).draftClaims).toEqual([]);
   });
 
+  it("keeps the edited findings report draft", () => {
+    const p: DiligenceProject = {
+      ...project(),
+      report: { markdown: "# Oakville Vet\n\nEdited.\n", at: "2026-11-05T09:00:00.000Z", basedOn: "x|", edited: true },
+    };
+    expect(fromRows(toRows(p))).toEqual(p);
+  });
+
   it("links evidence to the quoted sentence, even for results saved without a turnId", () => {
     const p = project();
     delete p.thesisValidation!.hypotheses[0]!.evidence[0]!.turnId;

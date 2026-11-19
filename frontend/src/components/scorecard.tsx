@@ -1,6 +1,6 @@
 import { Link } from "@tanstack/react-router";
 import { ArrowUpRight, Loader2, RefreshCw } from "lucide-react";
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { expertOf } from "@/components/research";
 import { Button, Dialog } from "@/components/ui-kit";
 import { cn } from "@/lib/utils";
@@ -263,9 +263,12 @@ function ClaimDetail({
 export function Scorecard({
   project,
   v,
+  action,
 }: {
   project: DiligenceProject;
   v: ReturnType<typeof useThesisValidation>;
+  /** Shown beside the refresh button, e.g. "Export report". */
+  action?: ReactNode;
 }) {
   const rows = scorecardRows(project);
   const r = v.result;
@@ -292,16 +295,19 @@ export function Scorecard({
               {v.loading && " · updating…"}
             </p>
           </div>
-          <Button
-            variant="ghost"
-            size="icon"
-            aria-label="Refresh scorecard"
-            title="Refresh"
-            disabled={v.loading || !v.hasEvidence}
-            onClick={() => void v.run()}
-          >
-            {v.loading ? <Loader2 className="animate-spin" /> : <RefreshCw />}
-          </Button>
+          <div className="flex shrink-0 items-center gap-1">
+            {action}
+            <Button
+              variant="ghost"
+              size="icon"
+              aria-label="Refresh scorecard"
+              title="Refresh"
+              disabled={v.loading || !v.hasEvidence}
+              onClick={() => void v.run()}
+            >
+              {v.loading ? <Loader2 className="animate-spin" /> : <RefreshCw />}
+            </Button>
+          </div>
         </div>
 
         <dl className="mt-5 grid grid-cols-3 gap-4">

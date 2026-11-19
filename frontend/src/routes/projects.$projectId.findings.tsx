@@ -1,6 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState, type ReactNode } from "react";
 import { AlertTriangle, ArrowRight, Compass, FileText, Loader2, RefreshCw } from "lucide-react";
+import { ExportReportButton } from "@/components/report-editor";
 import { Scorecard } from "@/components/scorecard";
 import { Badge, Button, buttonVariants, Card, EmptyState, SectionTitle } from "@/components/ui-kit";
 import {
@@ -222,7 +223,13 @@ function LlmFindings({
   const working = v.loading || (v.hasEvidence && v.stale && !v.error);
   return (
     <>
-      <Scorecard project={project} v={v} />
+      <Scorecard
+        project={project}
+        v={v}
+        action={
+          <ExportReportButton project={project} update={update} disabled={working || !v.result} />
+        }
+      />
       {!working && v.result && <ResearchGapsSection project={project} result={v.result} />}
       {!working && v.result && nextRound}
     </>
