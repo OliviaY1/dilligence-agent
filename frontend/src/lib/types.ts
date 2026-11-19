@@ -142,6 +142,17 @@ export interface NextRoundProposal {
   why: Record<string, string>;
 }
 
+/** The findings report as the team edits it before exporting (lib/report.ts). */
+export interface ReportDraft {
+  markdown: string;
+  /** When it was generated from the findings. */
+  at: string;
+  /** reportBasis() of the findings it was generated from; newer findings offer a rebuild. */
+  basedOn: string;
+  /** The team changed it by hand, so a rebuild would discard their edits. */
+  edited?: boolean;
+}
+
 export interface DiligenceProject {
   id: string;
   company: string;
@@ -162,5 +173,7 @@ export interface DiligenceProject {
   pastRounds?: ResearchRound[];
   thesisValidation?: ThesisValidationResult;
   nextRound?: NextRoundProposal;
+  /** The findings report draft, if one was opened for export. */
+  report?: ReportDraft;
   updatedAt: string;
 }

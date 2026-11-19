@@ -43,6 +43,8 @@ interface Workspace {
   rounds: Array<{ hypothesisIds: string[]; experts: PlanExpert[]; approved: boolean; notes?: ResearchPlan["notes"] }>;
   validation?: Omit<ThesisValidationResult, "hypotheses">;
   nextRound?: DiligenceProject["nextRound"];
+  /** The findings report draft (Markdown) the team edits before exporting. */
+  report?: DiligenceProject["report"];
   /** Claims edited before the first plan (rows in claims), in order. */
   draftClaimIds?: string[];
 }
@@ -132,6 +134,7 @@ export function toRows(p: DiligenceProject): Rows {
         })),
         ...(validation ? { validation } : {}),
         ...(p.nextRound ? { nextRound: p.nextRound } : {}),
+        ...(p.report ? { report: p.report } : {}),
         ...(drafts ? { draftClaimIds: drafts.map((h) => h.id) } : {}),
       },
     },
@@ -191,6 +194,7 @@ export function fromRows(r: Rows): DiligenceProject {
   if (rounds.length > 1) p.pastRounds = rounds.slice(0, -1);
   if (ws.selectedExpertIds) p.selectedExpertIds = ws.selectedExpertIds;
   if (ws.nextRound) p.nextRound = ws.nextRound;
+  if (ws.report) p.report = ws.report;
   if (ws.draftClaimIds) {
     p.draftClaims = ws.draftClaimIds.flatMap((id) => (claim.has(id) ? [hypothesis(claim.get(id)!)] : []));
   }
